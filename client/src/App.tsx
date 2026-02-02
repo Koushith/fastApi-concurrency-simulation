@@ -163,34 +163,49 @@ function App() {
     setSyncLoading(false)
   }
 
-  // Generate async report
+  // Generate async report (optimistic UI update)
   const runAsync = async () => {
     const reportName = `Report_${reportCounter++}`
     const idempKey = generateIdempotencyKey('async')
+    const tempId = `temp-${Date.now()}`
     const start = Date.now()
 
-    const res = await fetch(`${API_BASE}/async`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Idempotency-Key': idempKey,
-      },
-      body: JSON.stringify({
-        payload: { num_transactions: asyncTransactions, report_name: reportName },
-        callback_url: `${SERVER_URL}/api/callbacks/receive`,
-      }),
-    })
-    const data = await res.json()
-    const ackTime = Date.now() - start
-
+    // Optimistic update - add to queue immediately
     setQueue(prev => [{
-      id: data.request_id,
+      id: tempId,
       numTransactions: asyncTransactions,
       reportName,
       status: 'queued' as const,
-      ackTime,
+      ackTime: 0,
       addedAt: Date.now()
     }, ...prev].slice(0, 20))
+
+    try {
+      const res = await fetch(`${API_BASE}/async`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Idempotency-Key': idempKey,
+        },
+        body: JSON.stringify({
+          payload: { num_transactions: asyncTransactions, report_name: reportName },
+          callback_url: `${SERVER_URL}/api/callbacks/receive`,
+        }),
+      })
+      const data = await res.json()
+      const ackTime = Date.now() - start
+
+      // Update with real ID and ack time
+      setQueue(prev => prev.map(q =>
+        q.id === tempId
+          ? { ...q, id: data.request_id, ackTime }
+          : q
+      ))
+    } catch (e) {
+      // Remove failed item from queue
+      setQueue(prev => prev.filter(q => q.id !== tempId))
+      console.error('Failed to create async request', e)
+    }
   }
 
   // Run load test
