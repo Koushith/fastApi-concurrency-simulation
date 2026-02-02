@@ -1,74 +1,115 @@
-# Financial Report Generator - Sync vs Async API Demo
+# Financial Report Generator - Project Specification
 
 ## Overview
 
-FastAPI backend demonstrating sync (blocking) vs async (callback-based) request handling. Generates realistic financial reports as downloadable CSV files.
+API pattern simulator demonstrating **Sync vs Async** request handling for a financial reporting service. Built with FastAPI + React.
 
-## Architecture
+## Tech Stack
 
-- **Framework**: FastAPI with async SQLAlchemy
-- **Database**: SQLite (file-based, no server needed)
-- **Background Processing**: Python threads (simple, no Redis/RQ needed)
-- **Frontend**: React + Vite + Tailwind
+| Layer | Technology |
+|-------|------------|
+| Backend | FastAPI, Python 3.11+ |
+| Database | PostgreSQL (Neon serverless) |
+| ORM | SQLAlchemy (async) |
+| Frontend | React, TypeScript, Vite, Tailwind |
+| Background Jobs | Python threads |
 
-## Key Files
+## Database Schema
 
-- `server/src/app.py` - FastAPI entry point
-- `server/src/services/report_service.py` - Generates financial report CSV files
-- `server/src/services/background_worker.py` - Thread-based job processor with retry logic
-- `server/src/controllers/sync_controller.py` - Sync endpoint handler
-- `server/src/controllers/async_controller.py` - Async endpoint handler
-- `client/src/App.tsx` - Demo UI
+### `requests` table
+- `id` (UUID) - Primary key
+- `mode` - "sync" or "async"
+- `status` - PENDING, PROCESSING, COMPLETED, FAILED
+- `input_payload` (JSON) - Request parameters
+- `result_payload` (JSON) - Report result
+- `callback_url` - Webhook URL (async only)
+- `callback_status` - PENDING, SUCCESS, FAILED
+- `callback_attempts` - Retry count
+- `idempotency_key` - Unique key for deduplication
+- `created_at`, `completed_at` - Timestamps
+
+### `callback_logs` table
+- `id` (UUID) - Primary key
+- `request_id` (FK) - Links to request
+- `attempt_number` - 1, 2, or 3
+- `status_code` - HTTP response code
+- `success` - Boolean
+- `error_message` - Error details
+- `response_time_ms` - Latency
+- `attempted_at` - Timestamp
 
 ## API Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/sync` | POST | Generate report synchronously (blocking) |
-| `/api/async` | POST | Generate report asynchronously (returns immediately) |
-| `/api/requests` | GET | List all requests |
-| `/api/requests/{id}` | GET | Get single request details |
-| `/api/requests` | DELETE | Delete all requests |
-| `/api/reports/{filename}` | GET | Download generated CSV file |
-| `/api/healthz` | GET | Health check |
+### Core
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/sync` | Blocking report generation |
+| POST | `/api/async` | Non-blocking with webhook |
+| GET | `/api/requests` | List all requests |
+| GET | `/api/requests/{id}` | Get request details |
+| GET | `/api/reports/{file}` | Download CSV |
 
-## Request Payload
+### Resilience
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/requests/{id}/callback-logs` | View retry history |
+| POST | `/api/callbacks/simulate-failures` | Test retry logic |
 
-```json
-{
-  "num_transactions": 50,
-  "report_name": "Q1_Finance"
-}
+### Benchmarking
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/benchmark/both` | Run load test |
+
+## Features
+
+- **Idempotency**: `X-Idempotency-Key` header prevents duplicate processing
+- **Rate Limiting**: 30/min (sync), 60/min (async) per IP
+- **Retry Logic**: Exponential backoff (2s, 4s, 8s) for failed callbacks
+- **SSRF Protection**: Blocks localhost/private IPs for callbacks
+- **Callback Audit**: Every attempt logged with timing
+
+## File Structure
+
+```
+server/src/
+├── app.py                 # FastAPI app
+├── database.py            # PostgreSQL connection
+├── config.py              # Environment config
+├── models/
+│   ├── request_model.py   # Request table
+│   └── callback_log_model.py
+├── controllers/
+│   ├── sync_controller.py
+│   ├── async_controller.py
+│   └── requests_controller.py
+├── routes/
+│   ├── api_routes.py      # Core endpoints
+│   ├── benchmark.py       # Load testing
+│   └── webhook_test.py    # Demo callback receiver
+└── services/
+    ├── report_service.py  # CSV generation
+    └── background_worker.py # Job processor + retries
+
+client/src/
+└── App.tsx                # Full demo UI
 ```
 
-## Response (includes download URL)
-
-```json
-{
-  "report_name": "Q1_Finance",
-  "file_name": "Q1_Finance_abc123.csv",
-  "download_url": "/api/reports/Q1_Finance_abc123.csv",
-  "summary": {
-    "total_transactions": 50,
-    "total_revenue": 245830.50,
-    "total_expenses": 189420.75,
-    "net_income": 56409.75
-  }
-}
-```
-
-## Conventions
-
-- Use functions over classes where possible
-- Keep code simple, minimal abstraction
-- Literal types instead of Enum classes
-
-## Running
+## Running Locally
 
 ```bash
-# Server
-cd server && source venv/bin/activate && fastapi dev src/app.py
+# Backend
+cd server
+source venv/bin/activate
+fastapi dev src/app.py
 
-# Client
-cd client && npm run dev
+# Frontend
+cd client
+npm run dev
+```
+
+## Environment Variables
+
+```env
+DATABASE_URL=postgresql+asyncpg://...
+DEBUG=true
 ```

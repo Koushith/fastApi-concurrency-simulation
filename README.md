@@ -1,177 +1,274 @@
-# Financial Report Generator - Sync vs Async API
+# Financial Report Generator
 
-A FastAPI backend demonstrating **synchronous** (blocking) vs **asynchronous** (callback-based) request handling. Generates realistic financial reports as downloadable CSV files.
+API pattern simulator comparing **Sync** (blocking) vs **Async** (webhook callback) request handling.
 
-## What This Demonstrates
+Built for a take-home assignment demonstrating production-ready API design patterns.
 
-| Endpoint | Behavior | Use Case |
-|----------|----------|----------|
-| `POST /api/sync` | Blocks until report is ready, returns result | Small reports (< 100 transactions) |
-| `POST /api/async` | Returns immediately with request ID, notifies via webhook | Large reports, better UX |
+![Demo](https://img.shields.io/badge/demo-localhost:5173-blue)
+![Python](https://img.shields.io/badge/python-3.11+-green)
+![FastAPI](https://img.shields.io/badge/fastapi-0.100+-orange)
 
 ## Quick Start
 
-### Server
 ```bash
+# Backend
 cd server
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env  # Add your DATABASE_URL
 fastapi dev src/app.py
-```
-Server runs at http://localhost:8000
 
-### Frontend
-```bash
+# Frontend
 cd client
-npm install
-npm run dev
+npm install && npm run dev
 ```
-Frontend runs at http://localhost:5173
+
+- Backend: http://localhost:8000
+- Frontend: http://localhost:5173
+- API Docs: http://localhost:8000/docs
+
+---
+
+## Architecture
+
+```
+┌─────────────┐     ┌─────────────────────────────────────────┐
+│   React     │     │              FastAPI Backend            │
+│   Frontend  │────▶│                                         │
+└─────────────┘     │  ┌─────────┐  ┌─────────┐  ┌─────────┐ │
+                    │  │  Sync   │  │  Async  │  │ Bench-  │ │
+                    │  │ Controller│ │Controller│ │  mark   │ │
+                    │  └────┬────┘  └────┬────┘  └─────────┘ │
+                    │       │            │                    │
+                    │       ▼            ▼                    │
+                    │  ┌─────────────────────────────────┐   │
+                    │  │      Report Service             │   │
+                    │  │   (CSV Generation ~10ms/row)    │   │
+                    │  └─────────────────────────────────┘   │
+                    │                    │                    │
+                    │       ┌────────────┴────────────┐      │
+                    │       ▼                         ▼      │
+                    │  ┌─────────┐            ┌───────────┐  │
+                    │  │ Direct  │            │ Background│  │
+                    │  │ Return  │            │  Thread   │  │
+                    │  └─────────┘            └─────┬─────┘  │
+                    └───────────────────────────────│────────┘
+                                                    │
+                    ┌───────────────────────────────▼────────┐
+                    │           PostgreSQL (Neon)            │
+                    │  ┌──────────┐      ┌───────────────┐   │
+                    │  │ requests │      │ callback_logs │   │
+                    │  └──────────┘      └───────────────┘   │
+                    └────────────────────────────────────────┘
+                                                    │
+                                    ┌───────────────▼───────────────┐
+                                    │   Webhook Callback            │
+                                    │   (with retry: 2s, 4s, 8s)    │
+                                    └───────────────────────────────┘
+```
+
+### Request Flow
+
+**Sync (`POST /api/sync`):**
+```
+Client → API → Generate Report → Return Result (blocks 1-5s)
+```
+
+**Async (`POST /api/async`):**
+```
+Client → API → Return ACK (20ms) → Background Thread → Generate → Webhook
+```
+
+---
 
 ## API Endpoints
 
-### Generate Report (Sync)
+### Core Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/sync` | Generate report synchronously (blocking) |
+| `POST` | `/api/async` | Generate report asynchronously (webhook) |
+| `GET` | `/api/requests` | List all requests |
+| `GET` | `/api/requests/{id}` | Get request details |
+| `DELETE` | `/api/requests/{id}` | Delete a request |
+| `GET` | `/api/reports/{file}` | Download CSV file |
+
+### Example: Sync Request
 ```bash
 curl -X POST http://localhost:8000/api/sync \
   -H "Content-Type: application/json" \
+  -H "X-Idempotency-Key: unique-key-123" \
   -d '{"num_transactions": 50, "report_name": "Q1_Report"}'
 ```
-- Blocks until complete
-- Limited to < 100 transactions
-- Returns report summary + download URL
 
-### Generate Report (Async)
+### Example: Async Request
 ```bash
 curl -X POST http://localhost:8000/api/async \
   -H "Content-Type: application/json" \
   -d '{
-    "payload": {"num_transactions": 200, "report_name": "Annual_Report"},
-    "callback_url": "https://webhook.site/your-id"
+    "payload": {"num_transactions": 200, "report_name": "Annual"},
+    "callback_url": "https://your-server.com/webhook"
   }'
 ```
-- Returns `request_id` immediately (~20ms)
-- Processes in background
-- POSTs result to `callback_url` when done
 
-### Download Report
+### Utility Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/health` | Health check with system info |
+| `GET` | `/api/requests/{id}/callback-logs` | View webhook retry history |
+| `POST` | `/api/benchmark/both` | Run load test comparison |
+
+---
+
+## Features
+
+### Idempotency
+Prevent duplicate processing with `X-Idempotency-Key` header:
 ```bash
-curl http://localhost:8000/api/reports/Q1_Report_abc123.csv --output report.csv
+# First request - processed
+curl -X POST /api/sync -H "X-Idempotency-Key: order-123" ...
+
+# Second request - returns cached result
+curl -X POST /api/sync -H "X-Idempotency-Key: order-123" ...
+# Response: {"status": "duplicate", "request_id": "..."}
 ```
 
-### Check Request Status
-```bash
-curl http://localhost:8000/api/requests/{request_id}
-```
+### Rate Limiting
+- **Sync**: 30 requests/minute per IP
+- **Async**: 60 requests/minute per IP
+- Returns `429 Too Many Requests` when exceeded
 
-### List All Requests
-```bash
-curl http://localhost:8000/api/requests
-curl http://localhost:8000/api/requests?mode=async
-```
+### Callback Retry Logic
+Failed webhooks retry with exponential backoff:
+| Attempt | Delay |
+|---------|-------|
+| 1 | Immediate |
+| 2 | 2 seconds |
+| 3 | 4 seconds |
+| 4 | 8 seconds |
 
-### Delete All Requests
-```bash
-curl -X DELETE http://localhost:8000/api/requests
-```
-
-### Health Check
-```bash
-curl http://localhost:8000/api/healthz
-```
-
-## Load Testing
-
-### Using Frontend
-The UI includes a **Load Generator** that fires concurrent requests and shows latency comparison.
-
-### Using CLI
-```bash
-cd server
-python -m tests.load_generator
-```
-
-### Using API
-```bash
-curl -X POST http://localhost:8000/api/benchmark/both \
-  -H "Content-Type: application/json" \
-  -d '{"concurrency": 20, "num_transactions": 50}'
-```
-
-## Generated Report Format
-
-The CSV file includes:
-```csv
-# Financial Report: Q1_Report
-# Generated: 2024-01-15 10:30:00
-# Period: Last 30 Days
-# Total Transactions: 50
-#
-# SUMMARY
-# Total Revenue: $125,430.50
-# Total Expenses: $89,210.25
-# Net Income: $36,220.25
-#
-Transaction ID,Date,Type,Category,Description,Amount
-TXN-00001,2024-01-10,Revenue,Sales Income,Sales Income - January 2024,$12,500.00
-TXN-00002,2024-01-08,Expense,Payroll,Payroll - January 2024,$8,500.00
-...
-```
-
-## Key Design Decisions
-
-### Why Threads Instead of Redis/Celery?
-- **Simplicity**: No external dependencies
-- **Demo Focus**: Shows the sync/async pattern clearly
-- **Good Enough**: Works for moderate load
+Only 5xx errors trigger retries. 4xx errors are not retried.
 
 ### SSRF Protection
 Callback URLs are validated to block:
-- localhost, 127.0.0.1, ::1
-- Private IP ranges (10.x, 192.168.x)
+- `localhost`, `127.0.0.1`, `::1`
+- Private IP ranges (10.x, 172.16.x, 192.168.x)
 - Reserved addresses
 
-### Callback Retry Logic
-Failed callbacks retry with exponential backoff:
-- Attempt 1: Immediate
-- Attempt 2: After 2s
-- Attempt 3: After 4s
-- Attempt 4: After 8s
+---
 
-### Database
-SQLite with async SQLAlchemy. Database file persists at `data/app.db`.
+## Database Schema
+
+### `requests`
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| mode | VARCHAR | "sync" or "async" |
+| status | VARCHAR | PENDING, PROCESSING, COMPLETED, FAILED |
+| input_payload | JSON | Request parameters |
+| result_payload | JSON | Report result |
+| callback_url | VARCHAR | Webhook URL |
+| callback_status | VARCHAR | PENDING, SUCCESS, FAILED |
+| idempotency_key | VARCHAR | Unique, prevents duplicates |
+| created_at | TIMESTAMP | Request time |
+
+### `callback_logs`
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| request_id | UUID | FK to requests |
+| attempt_number | INT | 1, 2, or 3 |
+| status_code | INT | HTTP response code |
+| success | BOOL | Delivery success |
+| error_message | TEXT | Error details |
+| response_time_ms | INT | Latency |
+
+---
+
+## Design Tradeoffs
+
+### Why Threads Instead of Celery/Redis?
+| Approach | Pros | Cons |
+|----------|------|------|
+| **Threads (chosen)** | Simple, no infra, good for demo | Not horizontally scalable |
+| Celery + Redis | Production-ready, scalable | Complex setup, overkill for demo |
+| asyncio tasks | Native async | Can't do CPU-bound work |
+
+**Decision**: Threads are sufficient for demonstrating the pattern. In production, use Celery.
+
+### Why PostgreSQL Instead of SQLite?
+| Approach | Pros | Cons |
+|----------|------|------|
+| **PostgreSQL (chosen)** | Production-realistic, concurrent writes | Requires connection |
+| SQLite | Zero config, embedded | Single-writer lock, not realistic |
+
+**Decision**: Neon provides free serverless PostgreSQL, making it easy to demo production patterns.
+
+### Why Store Files on Filesystem?
+| Approach | Pros | Cons |
+|----------|------|------|
+| **Filesystem (chosen)** | Simple, fast streaming | Not horizontally scalable |
+| Database BLOB | Single source of truth | Expensive, slow for large files |
+| S3/R2 | Scalable, cheap | Extra complexity |
+
+**Decision**: Filesystem is fine for demo. Production should use S3/R2.
+
+---
+
+## Future Roadmap
+
+- [ ] **File Storage**: Move CSV files to S3/Cloudflare R2
+- [ ] **Authentication**: Add API key or JWT auth
+- [ ] **Webhooks Signing**: HMAC signature for callback verification
+- [ ] **Priority Queue**: High/low priority job processing
+- [ ] **Batch API**: Generate multiple reports in one request
+- [ ] **Websocket Updates**: Real-time status instead of polling
+- [ ] **Metrics**: Prometheus/Grafana for monitoring
+- [ ] **Docker**: Containerize for easy deployment
+
+---
 
 ## Project Structure
 
 ```
-server/
-├── src/
-│   ├── app.py                  # FastAPI entry point
-│   ├── database.py             # SQLite async setup
-│   ├── controllers/            # Business logic
-│   ├── routes/                 # API route handlers
-│   └── services/
-│       ├── report_service.py   # CSV report generation
-│       └── background_worker.py # Job processor
-├── data/
-│   ├── app.db                  # SQLite database
-│   └── reports/                # Generated CSV files
-└── requirements.txt
-
-client/
-└── src/
-    └── App.tsx                 # React demo UI
+├── server/
+│   ├── src/
+│   │   ├── app.py              # FastAPI entry
+│   │   ├── database.py         # PostgreSQL setup
+│   │   ├── config.py           # Environment config
+│   │   ├── models/             # SQLAlchemy models
+│   │   ├── controllers/        # Business logic
+│   │   ├── routes/             # API endpoints
+│   │   └── services/           # Report gen, background worker
+│   ├── data/reports/           # Generated CSV files
+│   └── requirements.txt
+│
+├── client/
+│   ├── src/App.tsx             # React UI
+│   └── package.json
+│
+├── claude.md                   # Project spec (for AI context)
+└── README.md
 ```
 
-## Requirements Met
+---
 
-- [x] POST /sync - blocks until work completes
-- [x] POST /async - returns ACK, calls callback later
-- [x] Shared work logic between sync/async
-- [x] GET /requests - list recent requests
-- [x] GET /requests/{id} - get single request
-- [x] GET /healthz - health check
-- [x] Callback failure handling (retry with backoff)
-- [x] SSRF protection
-- [x] Load generator with latency stats
-- [x] Downloadable CSV reports
+## Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| Backend | FastAPI, Python 3.11+ |
+| Database | PostgreSQL (Neon serverless) |
+| ORM | SQLAlchemy (async) |
+| Rate Limiting | slowapi |
+| HTTP Client | httpx |
+| Frontend | React, TypeScript, Vite |
+| Styling | Tailwind CSS |
+
+---
+
+## License
+
+MIT

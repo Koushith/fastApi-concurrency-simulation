@@ -1,73 +1,57 @@
-# Requirements Checklist
+# Feature Checklist
 
-Based on `problem-context.md`
+## Core API
 
-## Core Endpoints
+- [x] `POST /api/sync` - Synchronous report generation (blocking)
+- [x] `POST /api/async` - Asynchronous with webhook callback
+- [x] `GET /api/requests` - List all requests with filter
+- [x] `GET /api/requests/{id}` - Get single request details
+- [x] `DELETE /api/requests` - Delete all requests
+- [x] `DELETE /api/requests/{id}` - Delete single request
+- [x] `GET /api/reports/{file}` - Download CSV file
+- [x] `GET /api/health` - Health check with system info
 
-- [x] **POST /sync** - Request comes in, response returned inline
-- [x] **POST /async** - Request comes in, returns ACK with request_id, calls callback later
-- [x] **GET /requests** - Query recent requests (with optional `?mode=sync|async` filter)
-- [x] **GET /requests/{id}** - Get single request details
-- [x] **GET /healthz** - Health check endpoint
-- [x] **DELETE /requests** - Delete all requests
-- [x] **DELETE /requests/{id}** - Delete single request
-- [x] **GET /reports/{filename}** - Download generated CSV file
+## Resilience Features
 
-## Core Requirements
+- [x] **Idempotency** - `X-Idempotency-Key` header prevents duplicates
+- [x] **Rate Limiting** - 30/min sync, 60/min async (per IP)
+- [x] **Retry Logic** - Exponential backoff (2s, 4s, 8s)
+- [x] **SSRF Protection** - Blocks private IPs for callbacks
+- [x] **Callback Logging** - Audit trail for every attempt
 
-- [x] **Shared work logic** - Same `generate_report()` function used by both sync and async
-- [x] **Persist state** - SQLite database stores all requests
-- [x] **Trace async requests** - Can track status, callback delivery, retry attempts
+## Database
 
-## Callback Handling
+- [x] PostgreSQL (Neon serverless)
+- [x] `requests` table - Stores all report requests
+- [x] `callback_logs` table - Tracks webhook delivery attempts
+- [x] Cascade delete (logs deleted with request)
+- [x] Indexes on status and idempotency_key
 
-- [x] **Callback failures handled** - Retry with exponential backoff (2s, 4s, 8s)
-- [x] **SSRF protection** - Block localhost, 127.0.0.1, private IPs
-- [x] **Test webhook endpoint** - `/api/webhook/test` for demo (bypasses SSRF for localhost)
+## Load Testing
 
-## Load Generator
+- [x] `POST /api/benchmark/sync` - Test sync endpoint
+- [x] `POST /api/benchmark/async` - Test async endpoint
+- [x] `POST /api/benchmark/both` - Compare both with stats
+- [x] P50/P95/P99 latency metrics
+- [x] Callback timing stats
 
-- [x] **High volume requests** - Can fire concurrent requests via frontend or CLI
-- [x] **Summary stats** - Shows total requests, success/failure, latency comparison
-- [x] **P50/P95/P99 stats** - Available via `/api/benchmark/sync` and `/api/benchmark/async`
-- [x] **Time-to-callback stats** - CLI load generator tracks callback times
+## Frontend
 
-## Deliverables
+- [x] Sync/Async side-by-side comparison
+- [x] Real-time queue status polling
+- [x] Load test UI with results table
+- [x] Request history table
+- [x] Callback logs viewer
+- [x] Idempotency test tool
+- [x] Rate limit test tool
+- [x] Copy ID buttons
+- [x] Download CSV buttons
 
-- [x] **Python backend** - FastAPI with async SQLAlchemy
-- [x] **README.md** - How to run locally, load generator usage, design decisions
-- [x] **Frontend demo** - React UI to visualize sync vs async
+## Report Generation
 
-## API Parameter: `num_transactions`
-
-The payload uses `num_transactions` to specify how many financial transactions to include in the report:
-- Sync: Limited to < 100 transactions
-- Async: No limit
-
-Example:
-```json
-{
-  "num_transactions": 50,
-  "report_name": "Q1_Finance"
-}
-```
-
-## Generated Output
-
-CSV file with realistic financial data:
-- Transaction ID, Date, Type, Category, Description, Amount
-- Summary header with Total Revenue, Expenses, Net Income
-- Download via `/api/reports/{filename}`
-
-## Files Updated
-
-| File | Status | Description |
-|------|--------|-------------|
-| `src/routes/api_routes.py` | ✅ | Uses `num_transactions`, has download endpoint |
-| `src/controllers/sync_controller.py` | ✅ | Uses `num_transactions`, limit < 100 |
-| `src/controllers/async_controller.py` | ✅ | Uses `num_transactions` |
-| `src/services/report_service.py` | ✅ | Generates CSV with financial data |
-| `src/services/background_worker.py` | ✅ | Retry logic with exponential backoff |
-| `src/routes/benchmark.py` | ✅ | Uses `num_transactions` |
-| `tests/load_generator.py` | ✅ | Uses `num_transactions` |
-| `client/src/App.tsx` | ✅ | Uses `num_transactions`, shows download button |
+- [x] Realistic financial transaction data
+- [x] CSV format with header summary
+- [x] Configurable row count
+- [x] ~10ms per row (simulated processing)
+- [x] Revenue/Expense categories
+- [x] Net income calculation
