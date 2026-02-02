@@ -35,28 +35,7 @@ npm install && npm run dev
 
 ### Request Flow
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant A as API
-    participant R as Report Service
-    participant D as Database
-    participant W as Webhook
-
-    Note over C,W: Sync Flow (blocking)
-    C->>+A: POST /api/sync
-    A->>+R: Generate Report
-    R-->>-A: CSV Ready
-    A-->>-C: Return Result (1-5s)
-
-    Note over C,W: Async Flow (non-blocking)
-    C->>+A: POST /api/async
-    A-->>-C: Return ACK (20ms)
-    A->>+R: Background Thread
-    R->>D: Save Result
-    R->>W: POST Callback
-    W-->>R: 200 OK
-```
+![Request Flow Diagram](docs/flow-diagram.svg)
 
 ---
 
