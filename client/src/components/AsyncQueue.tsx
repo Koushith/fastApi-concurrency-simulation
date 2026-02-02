@@ -1,5 +1,5 @@
 import type { QueueItem } from '../types'
-import { copyToClipboard } from '../utils'
+import { copyToClipboard, SERVER_URL } from '../utils'
 
 interface AsyncQueueProps {
   queue: QueueItem[]
@@ -127,7 +127,7 @@ function QueueItemRow({ item }: { item: QueueItem }) {
 
           {item.status === 'completed' && item.downloadUrl && (
             <a
-              href={`http://localhost:8000${item.downloadUrl}`}
+              href={`${SERVER_URL}${item.downloadUrl}`}
               className="mt-2 inline-block bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700"
               download
             >

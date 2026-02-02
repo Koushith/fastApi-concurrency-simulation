@@ -44,15 +44,15 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS: allow React frontend
+# CORS: allow React frontend (local + production)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
-        "https://*.vercel.app",  # Vercel preview deployments
+        "https://reports-generator-client.vercel.app",  # Production
     ],
-    allow_origin_regex=r"https://.*\.vercel\.app",  # Allow all Vercel subdomains
+    allow_origin_regex=r"https://.*\.vercel\.app",  # Vercel preview deployments
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

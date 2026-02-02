@@ -21,7 +21,7 @@ import type {
   RateLimitResults,
 } from './types'
 
-import { API_BASE, generateIdempotencyKey } from './utils'
+import { API_BASE, SERVER_URL, generateIdempotencyKey } from './utils'
 
 let reportCounter = 1
 
@@ -177,7 +177,7 @@ function App() {
       },
       body: JSON.stringify({
         payload: { num_transactions: asyncTransactions, report_name: reportName },
-        callback_url: 'http://localhost:8000/api/callbacks/receive',
+        callback_url: `${SERVER_URL}/api/callbacks/receive`,
       }),
     })
     const data = await res.json()

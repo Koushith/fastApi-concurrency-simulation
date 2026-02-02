@@ -1,4 +1,7 @@
-export const API_BASE = 'http://localhost:8000/api'
+import { getBaseUrl, getServerUrl } from '../config'
+
+export const API_BASE = getBaseUrl()
+export const SERVER_URL = getServerUrl()
 
 export const copyToClipboard = async (text: string) => {
   try {

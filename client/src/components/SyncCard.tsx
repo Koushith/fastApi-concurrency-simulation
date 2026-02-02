@@ -1,3 +1,5 @@
+import { SERVER_URL } from '../utils'
+
 interface SyncResult {
   reportName: string
   elapsed: number
@@ -77,7 +79,7 @@ export function SyncCard({
                 </div>
                 {result.download_url && (
                   <a
-                    href={`http://localhost:8000${result.download_url}`}
+                    href={`${SERVER_URL}${result.download_url}`}
                     className="bg-red-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-red-700"
                     download
                   >

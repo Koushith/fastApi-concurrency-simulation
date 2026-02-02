@@ -1,5 +1,5 @@
 import type { RequestRecord } from '../types'
-import { copyToClipboard } from '../utils'
+import { copyToClipboard, SERVER_URL } from '../utils'
 
 interface RequestHistoryProps {
   requests: RequestRecord[]
@@ -188,7 +188,7 @@ function RequestRow({ request: req, onDelete, onViewCallbackLogs }: RequestRowPr
         <div className="flex items-center justify-center gap-1">
           {req.result_payload?.download_url && (
             <a
-              href={`http://localhost:8000${req.result_payload.download_url}`}
+              href={`${SERVER_URL}${req.result_payload.download_url}`}
               className="p-1.5 hover:bg-blue-100 rounded transition-colors"
               title="Download CSV"
               download
