@@ -246,7 +246,7 @@ function App() {
       id: data.request_id,
       numTransactions: asyncTransactions,
       reportName,
-      status: 'queued',
+      status: 'queued' as const,
       ackTime,
       addedAt: Date.now()
     }, ...prev].slice(0, 20))
@@ -568,7 +568,6 @@ function App() {
                   {queue.map((item) => {
                     // Determine overall status combining job + webhook
                     const isFullyDone = item.status === 'completed' && item.callbackStatus === 'SUCCESS'
-                    const isProcessing = item.status === 'queued' || item.status === 'processing'
                     const isWaitingCallback = item.status === 'completed' && item.callbackStatus !== 'SUCCESS'
                     const isFailed = item.status === 'failed'
 
