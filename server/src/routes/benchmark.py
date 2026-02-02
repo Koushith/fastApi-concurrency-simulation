@@ -18,6 +18,7 @@ from src.database import async_session
 from src.controllers.sync_controller import handle_sync_request
 from src.controllers.async_controller import handle_async_request
 from src.models import Request
+from src.config import SERVER_URL
 
 router = APIRouter()
 
@@ -108,7 +109,7 @@ async def benchmark_async(config: BenchmarkConfig, wait_for_callbacks: bool = Fa
             async with async_session() as db:
                 result = await handle_async_request(
                     {"num_transactions": config.num_transactions, "report_name": "benchmark"},
-                    "http://localhost:8000/api/callbacks/receive",  # Demo callback receiver
+                    f"{SERVER_URL}/api/callbacks/receive",
                     db,
                 )
             ack_latencies.append((time.time() - start) * 1000)
