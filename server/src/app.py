@@ -66,4 +66,6 @@ app.include_router(webhook_router, prefix=API_PREFIX)
 
 
 if __name__ == "__main__":
-    uvicorn.run("src.app:app", reload=DEBUG)
+    import os
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("src.app:app", host="0.0.0.0", port=port, reload=DEBUG)
