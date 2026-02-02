@@ -335,6 +335,19 @@ Callback URLs are validated to block:
 
 **Decision**: Filesystem is fine for demo. Production should use S3/R2.
 
+### Current Limitations
+
+These are **intentional tradeoffs** for simplicity - not oversights:
+
+| Limitation | Why It's OK for Demo | Production Solution |
+|------------|---------------------|---------------------|
+| **In-memory queue** | Jobs lost if server restarts | Redis/RabbitMQ persistent queue |
+| **Single worker thread** | Guarantees FIFO but limits throughput | Celery with ordered task chains |
+| **Local file storage** | Reports deleted on redeploy | S3/Cloudflare R2 |
+| **No authentication** | Open API for easy testing | API keys or JWT |
+| **Polling for status** | Simple but inefficient | WebSocket real-time updates |
+| **No webhook signing** | Callbacks can be spoofed | HMAC signature verification |
+
 ---
 
 ## Future Roadmap
