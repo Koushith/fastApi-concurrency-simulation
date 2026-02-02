@@ -166,20 +166,22 @@ function App() {
 
   // Generate async report (optimistic UI update)
   // Note: No loading state that blocks - async should allow rapid clicks
+  // FIFO: Server assigns queue_position to maintain strict ordering
   const runAsync = () => {
     const reportName = `Report_${reportCounter++}`
     const idempKey = generateIdempotencyKey('async')
     const tempId = `temp-${Date.now()}`
     const start = Date.now()
 
-    // Optimistic update - add to queue immediately
+    // Optimistic update - add to queue immediately (position assigned by server)
     setQueue(prev => [{
       id: tempId,
       numTransactions: asyncTransactions,
       reportName,
       status: 'queued' as const,
       ackTime: 0,
-      addedAt: Date.now()
+      addedAt: Date.now(),
+      queuePosition: undefined,  // Will be set by server response
     }, ...prev].slice(0, 20))
 
     // Fire and forget - don't await, don't block UI
@@ -194,13 +196,25 @@ function App() {
         callback_url: `${SERVER_URL}/api/callbacks/receive`,
       }),
     })
-      .then(res => res.json())
+      .then(res => {
+        if (res.status === 429) {
+          // Rate limited - update item to show rate limited status (keep tempId for uniqueness)
+          setQueue(prev => prev.map(q =>
+            q.id === tempId
+              ? { ...q, status: 'failed' as const, id: `rate-limited-${tempId}` }
+              : q
+          ))
+          return null
+        }
+        return res.json()
+      })
       .then(data => {
+        if (!data) return // Rate limited, already handled
         const ackTime = Date.now() - start
-        // Update with real ID and ack time
+        // Update with real ID, ack time, and FIFO queue position
         setQueue(prev => prev.map(q =>
           q.id === tempId
-            ? { ...q, id: data.request_id, ackTime }
+            ? { ...q, id: data.request_id, ackTime, queuePosition: data.queue_position }
             : q
         ))
       })
@@ -281,40 +295,45 @@ function App() {
     setIdempotencyResults([result1, result2])
   }
 
-  // Test rate limiting
-  const testRateLimit = async () => {
+  // Test rate limiting on sync or async endpoint
+  const testRateLimit = async (endpoint: 'sync' | 'async') => {
     setRateLimitRunning(true)
     setRateLimitResults(null)
+
+    const limit = endpoint === 'sync' ? 30 : 60
+    const maxRequests = limit + 10 // Send a few more to trigger rate limiting
 
     let sent = 0
     let succeeded = 0
     let rateLimited = 0
-    const requests: { index: number; status: number; blocked: boolean; timestamp: number }[] = []
 
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < maxRequests; i++) {
       try {
-        const res = await fetch(`${API_BASE}/sync`, {
+        const url = endpoint === 'sync' ? `${API_BASE}/sync` : `${API_BASE}/async`
+        const body = endpoint === 'sync'
+          ? { num_transactions: 5, report_name: `RateLimit_${i + 1}` }
+          : { payload: { num_transactions: 5, report_name: `RateLimit_${i + 1}` }, callback_url: `${SERVER_URL}/api/callbacks/receive` }
+
+        const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ num_transactions: 5, report_name: `RateLimit_${i + 1}` }),
+          body: JSON.stringify(body),
         })
         sent++
-        const blocked = res.status === 429
-        requests.push({ index: i + 1, status: res.status, blocked, timestamp: Date.now() })
 
-        if (blocked) {
+        if (res.status === 429) {
           rateLimited++
-          if (rateLimited >= 5) break
+          if (rateLimited >= 5) break // Stop after 5 blocked requests
         } else if (res.ok) {
           succeeded++
         }
-        setRateLimitResults({ sent, succeeded, rateLimited, requests: [...requests] })
+        setRateLimitResults({ endpoint, sent, succeeded, rateLimited })
       } catch {
         sent++
       }
     }
 
-    setRateLimitResults({ sent, succeeded, rateLimited, requests })
+    setRateLimitResults({ endpoint, sent, succeeded, rateLimited })
     setRateLimitRunning(false)
   }
 

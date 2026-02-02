@@ -8,6 +8,7 @@ export interface QueueItem {
   ackTime: number
   addedAt: number
   completedAt?: number
+  queuePosition?: number  // FIFO queue position from server
 }
 
 export interface RequestRecord {
@@ -16,6 +17,7 @@ export interface RequestRecord {
   status: string
   callback_status?: string
   callback_attempts?: number
+  queue_position?: number  // FIFO queue position for async requests
   input_payload?: {
     report_name?: string
     num_transactions?: number
@@ -91,16 +93,9 @@ export interface IdempotencyResult {
   }
 }
 
-export interface RateLimitRequest {
-  index: number
-  status: number
-  blocked: boolean
-  timestamp: number
-}
-
 export interface RateLimitResults {
+  endpoint: 'sync' | 'async'
   sent: number
   succeeded: number
   rateLimited: number
-  requests: RateLimitRequest[]
 }

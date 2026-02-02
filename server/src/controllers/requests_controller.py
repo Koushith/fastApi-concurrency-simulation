@@ -35,6 +35,7 @@ async def get_requests(
                 "callback_status": r.callback_status,
                 "callback_attempts": r.callback_attempts,
                 "idempotency_key": r.idempotency_key,
+                "queue_position": r.queue_position,  # FIFO order for async requests
                 "input_payload": r.input_payload,
                 "result_payload": r.result_payload,
                 "created_at": r.created_at.isoformat(),
@@ -63,6 +64,7 @@ async def get_request_by_id(request_id: str, db: AsyncSession) -> dict:
         "callback_status": request.callback_status,
         "callback_attempts": request.callback_attempts,
         "idempotency_key": request.idempotency_key,
+        "queue_position": request.queue_position,  # FIFO order for async requests
         "created_at": request.created_at.isoformat(),
         "completed_at": request.completed_at.isoformat() if request.completed_at else None,
     }

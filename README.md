@@ -31,11 +31,113 @@ npm install && npm run dev
 
 ## Architecture
 
-![Architecture Diagram](docs/architecture.svg)
+```mermaid
+flowchart TB
+    subgraph Client["React Frontend"]
+        UI[User Interface]
+    end
 
-### Request Flow
+    subgraph Server["FastAPI Backend"]
+        API[API Routes]
+        SYNC[Sync Controller]
+        ASYNC[Async Controller]
+        WORK[Report Generator<br/>Shared Work Logic]
 
-![Request Flow Diagram](docs/flow-diagram.svg)
+        subgraph FIFO["FIFO Queue System"]
+            QUEUE[(Thread-Safe Queue)]
+            WORKER[Single Worker Thread]
+        end
+
+        CALLBACK[Callback Service<br/>with Retry Logic]
+    end
+
+    subgraph DB["PostgreSQL"]
+        REQUESTS[(requests table)]
+        LOGS[(callback_logs table)]
+    end
+
+    UI -->|POST /sync| API
+    UI -->|POST /async| API
+    API --> SYNC
+    API --> ASYNC
+    SYNC --> WORK
+    SYNC --> REQUESTS
+    ASYNC -->|1. Create record| REQUESTS
+    ASYNC -->|2. Enqueue job| QUEUE
+    QUEUE -->|FIFO order| WORKER
+    WORKER --> WORK
+    WORKER -->|Update status| REQUESTS
+    WORKER --> CALLBACK
+    CALLBACK -->|Webhook| UI
+    CALLBACK -->|Log attempts| LOGS
+```
+
+### How It Works
+
+| Component | Description |
+|-----------|-------------|
+| **API Routes** | FastAPI endpoints with rate limiting (30/min sync, 60/min async) and idempotency support |
+| **Sync Controller** | Processes request inline, blocks until complete, returns result directly |
+| **Async Controller** | Creates DB record, enqueues job, returns immediately with `queue_position` |
+| **FIFO Queue** | Thread-safe `queue.Queue` ensuring strict first-in-first-out processing order |
+| **Single Worker** | One background thread processes jobs sequentially - guarantees ordering |
+| **Report Generator** | Shared work logic used by both sync and async paths (no code duplication) |
+| **Callback Service** | Sends webhooks with retry logic (3 attempts, exponential backoff: 2s, 4s, 8s) |
+
+**Sync Flow:**
+```
+Client → POST /sync → Generate Report (blocking) → Return CSV URL
+```
+
+**Async Flow:**
+```
+Client → POST /async → ACK (instant) → Queue → Worker → Generate → Webhook callback
+```
+
+### FIFO Queue - Ordering Guarantee
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant A as API
+    participant Q as FIFO Queue
+    participant W as Worker
+    participant DB as Database
+
+    Note over Q,W: Single worker processes<br/>jobs sequentially
+
+    C->>A: POST /async (Job 1)
+    A->>DB: Create request (queue_position=1)
+    A->>Q: Enqueue Job 1
+    A-->>C: ACK {queue_position: 1}
+
+    C->>A: POST /async (Job 2)
+    A->>DB: Create request (queue_position=2)
+    A->>Q: Enqueue Job 2
+    A-->>C: ACK {queue_position: 2}
+
+    C->>A: POST /async (Job 3)
+    A->>DB: Create request (queue_position=3)
+    A->>Q: Enqueue Job 3
+    A-->>C: ACK {queue_position: 3}
+
+    Note over W: Jobs complete in<br/>submission order
+
+    W->>Q: Dequeue (FIFO)
+    Q-->>W: Job 1
+    W->>DB: Process Job 1
+    W-->>C: Callback Job 1
+
+    W->>Q: Dequeue (FIFO)
+    Q-->>W: Job 2
+    W->>DB: Process Job 2
+    W-->>C: Callback Job 2
+
+    W->>Q: Dequeue (FIFO)
+    Q-->>W: Job 3
+    W->>DB: Process Job 3
+    W-->>C: Callback Job 3
+```
 
 ---
 
@@ -81,6 +183,65 @@ curl -X POST http://localhost:8000/api/async \
 ---
 
 ## Features
+
+### FIFO Queue Ordering
+Async requests are processed in **strict submission order** (First-In-First-Out):
+
+```
+POST /async → queue_position: 1 → Processed 1st
+POST /async → queue_position: 2 → Processed 2nd
+POST /async → queue_position: 3 → Processed 3rd
+```
+
+**How it works:**
+- Single worker thread processes jobs sequentially
+- `queue.Queue` ensures FIFO ordering
+- `queue_position` field tracks exact processing order
+- Callbacks sent in same order as requests received
+
+**Implementation Details:**
+
+```python
+# server/src/services/background_worker.py
+
+# Thread-safe FIFO queue (Python's queue.Queue is inherently FIFO)
+_job_queue: queue.Queue[str] = queue.Queue()
+
+# Global counter for queue position (thread-safe increment)
+_queue_position_counter: int = 0
+_counter_lock = threading.Lock()
+
+def enqueue_job(request_id: str) -> int:
+    """Add job to FIFO queue, return queue position."""
+    position = _get_next_queue_position()  # Atomic increment
+    _job_queue.put(request_id)             # Add to end of queue
+    _ensure_worker_running()               # Start worker if not running
+    return position
+
+def _fifo_worker():
+    """Single worker processes jobs one at a time, in order."""
+    while True:
+        request_id = _job_queue.get(block=True)  # Blocks until job available (FIFO)
+        _process_job(request_id)                  # Process synchronously
+        _job_queue.task_done()                    # Mark complete, get next
+```
+
+**Why this guarantees order:**
+
+1. **Single Queue**: All async requests go into one `queue.Queue` - Python's implementation is thread-safe and strictly FIFO
+2. **Single Worker**: Only ONE background thread pulls from the queue. No race conditions.
+3. **Blocking Process**: Worker calls `_job_queue.get(block=True)` which:
+   - Waits if queue is empty
+   - Returns the **oldest** item when available (FIFO)
+   - Only gets the next job after current one completes
+4. **Atomic Position Counter**: `queue_position` is assigned with a lock, ensuring unique sequential numbers
+
+**Why single worker?**
+| Approach | FIFO Guarantee | Complexity |
+|----------|---------------|------------|
+| **Single worker (chosen)** | ✅ Strict | Simple |
+| Thread pool | ❌ Race conditions | Medium |
+| Multiple workers | ❌ Out of order | Complex |
 
 ### Idempotency
 Prevent duplicate processing with `X-Idempotency-Key` header:
@@ -130,6 +291,7 @@ Callback URLs are validated to block:
 | callback_url | VARCHAR | Webhook URL |
 | callback_status | VARCHAR | PENDING, SUCCESS, FAILED |
 | idempotency_key | VARCHAR | Unique, prevents duplicates |
+| **queue_position** | **INT** | **FIFO order for async (auto-increment)** |
 | created_at | TIMESTAMP | Request time |
 
 ### `callback_logs`

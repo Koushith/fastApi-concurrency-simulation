@@ -48,6 +48,8 @@ class Request(Base):
     callback_status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     callback_attempts: Mapped[int] = mapped_column(Integer, default=0)
     idempotency_key: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, unique=True)
+    # FIFO Queue position - auto-incrementing for async requests to maintain order
+    queue_position: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -56,4 +58,5 @@ class Request(Base):
     __table_args__ = (
         Index("ix_requests_status", "status"),
         Index("ix_requests_idempotency_key", "idempotency_key"),
+        Index("ix_requests_queue_position", "queue_position"),
     )

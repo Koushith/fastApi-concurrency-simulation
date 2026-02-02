@@ -22,8 +22,8 @@ export function AsyncQueue({ queue, onClear }: AsyncQueueProps) {
       </div>
 
       <div className="px-4 py-2 bg-blue-50 border-b border-blue-100 text-xs text-gray-600">
-        <span className="font-medium">Response</span> = instant acknowledgment |
-        <span className="font-medium ml-1">Completed in</span> = total processing time
+        <span className="font-medium">FIFO Queue</span> — Jobs processed in order |
+        <span className="font-medium ml-1">#</span> = queue position
       </div>
 
       <div className="grid grid-cols-4 gap-2 p-4 border-b border-gray-100">
@@ -64,11 +64,14 @@ export function AsyncQueue({ queue, onClear }: AsyncQueueProps) {
 }
 
 function QueueItemRow({ item }: { item: QueueItem }) {
+  const isRateLimited = item.id?.startsWith('rate-limited-temp-')
   const isFullyDone = item.status === 'completed' && item.callbackStatus === 'SUCCESS'
   const isWaitingCallback = item.status === 'completed' && item.callbackStatus !== 'SUCCESS'
-  const isFailed = item.status === 'failed'
+  const isFailed = item.status === 'failed' && !isRateLimited
 
-  const statusConfig = isFullyDone
+  const statusConfig = isRateLimited
+    ? { icon: '🚫', color: 'border-orange-500 bg-orange-50', text: 'Rate Limited' }
+    : isFullyDone
     ? { icon: '✓', color: 'border-green-500 bg-green-50', text: 'Done' }
     : isFailed
     ? { icon: '✗', color: 'border-red-500 bg-red-50', text: 'Failed' }
@@ -78,7 +81,8 @@ function QueueItemRow({ item }: { item: QueueItem }) {
     ? { icon: '◉', color: 'border-blue-500 bg-blue-50', text: 'Processing...' }
     : { icon: '○', color: 'border-gray-300 bg-white', text: 'In Queue' }
 
-  const statusColorClass = isFullyDone ? 'text-green-600' :
+  const statusColorClass = isRateLimited ? 'text-orange-600' :
+    isFullyDone ? 'text-green-600' :
     isFailed ? 'text-red-600' :
     isWaitingCallback ? 'text-amber-600' :
     item.status === 'processing' ? 'text-blue-600' :
@@ -95,24 +99,35 @@ function QueueItemRow({ item }: { item: QueueItem }) {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {item.queuePosition && (
+              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-bold" title="FIFO Queue Position">
+                #{item.queuePosition}
+              </span>
+            )}
             <span className="font-semibold text-gray-800">{item.reportName}</span>
             <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
               {item.numTransactions} rows
             </span>
           </div>
 
-          <div className="flex items-center gap-1 mt-1">
-            <span className="text-xs text-gray-400 font-mono">{item.id.slice(0, 12)}...</span>
-            <button
-              onClick={() => copyToClipboard(item.id)}
-              className="p-0.5 hover:bg-gray-200 rounded transition-colors"
-              title="Copy ID"
-            >
-              <svg className="w-3 h-3 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-            </button>
-          </div>
+          {isRateLimited ? (
+            <div className="text-xs text-orange-600 mt-1">
+              Too many requests. Try again after a minute.
+            </div>
+          ) : item.id ? (
+            <div className="flex items-center gap-1 mt-1">
+              <span className="text-xs text-gray-400 font-mono">{item.id.slice(0, 12)}...</span>
+              <button
+                onClick={() => copyToClipboard(item.id)}
+                className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+                title="Copy ID"
+              >
+                <svg className="w-3 h-3 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
+          ) : null}
 
           <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
             <span title="Time for server to acknowledge request">

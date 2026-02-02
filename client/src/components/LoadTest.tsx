@@ -1,5 +1,17 @@
 import type { LoadTestResults } from '../types'
 
+/**
+ * Format milliseconds consistently:
+ * - < 1000ms: show as "XXXms"
+ * - >= 1000ms: show as "X.XXs"
+ */
+function formatTime(ms: number): string {
+  if (ms < 1000) {
+    return `${Math.round(ms)}ms`
+  }
+  return `${(ms / 1000).toFixed(2)}s`
+}
+
 interface LoadTestProps {
   config: { concurrency: number; rowsPerReport: number }
   setConfig: (config: { concurrency: number; rowsPerReport: number }) => void
@@ -94,7 +106,7 @@ function LoadTestResultsDisplay({ results }: { results: LoadTestResults }) {
         </div>
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
           <div className="text-2xl font-bold text-blue-600">
-            {(results.test_duration_ms / 1000).toFixed(1)}s
+            {formatTime(results.test_duration_ms)}
           </div>
           <div className="text-sm text-gray-600">Test Duration</div>
           <div className="text-xs text-gray-400">{results.config.num_transactions} rows each</div>
@@ -111,14 +123,14 @@ function LoadTestResultsDisplay({ results }: { results: LoadTestResults }) {
           <div className="flex items-center gap-6">
             <div className="text-center">
               <div className="text-xl font-bold text-red-600">
-                {(results.sync.avg_latency_ms / 1000).toFixed(2)}s
+                {formatTime(results.sync.avg_latency_ms)}
               </div>
               <div className="text-xs text-gray-500">Sync (blocked)</div>
             </div>
             <div className="text-2xl text-gray-300">vs</div>
             <div className="text-center">
               <div className="text-xl font-bold text-blue-600">
-                {results.async.avg_latency_ms.toFixed(0)}ms
+                {formatTime(results.async.avg_latency_ms)}
               </div>
               <div className="text-xs text-gray-500">Async (instant)</div>
             </div>
@@ -177,13 +189,13 @@ function LoadTestResultsDisplay({ results }: { results: LoadTestResults }) {
                 <div className="text-xs text-gray-400">Mean response time</div>
               </td>
               <td className="px-4 py-3 text-center font-mono font-semibold text-red-600">
-                {(results.sync.avg_latency_ms / 1000).toFixed(2)}s
+                {formatTime(results.sync.avg_latency_ms)}
               </td>
               <td className="px-4 py-3 text-center font-mono font-semibold text-blue-600">
-                {results.async.avg_latency_ms.toFixed(0)}ms
+                {formatTime(results.async.avg_latency_ms)}
               </td>
               <td className="px-4 py-3 text-center font-mono font-semibold text-green-600">
-                {(results.async.avg_callback_ms / 1000).toFixed(2)}s
+                {formatTime(results.async.avg_callback_ms)}
               </td>
             </tr>
             <tr>
@@ -191,26 +203,26 @@ function LoadTestResultsDisplay({ results }: { results: LoadTestResults }) {
                 <div className="font-medium">P50 (Median)</div>
                 <div className="text-xs text-gray-400">50th percentile</div>
               </td>
-              <td className="px-4 py-3 text-center font-mono">{(results.sync.p50_ms / 1000).toFixed(2)}s</td>
-              <td className="px-4 py-3 text-center font-mono">{results.async.p50_ms.toFixed(0)}ms</td>
-              <td className="px-4 py-3 text-center font-mono">{(results.async.p50_callback_ms / 1000).toFixed(2)}s</td>
+              <td className="px-4 py-3 text-center font-mono">{formatTime(results.sync.p50_ms)}</td>
+              <td className="px-4 py-3 text-center font-mono">{formatTime(results.async.p50_ms)}</td>
+              <td className="px-4 py-3 text-center font-mono">{formatTime(results.async.p50_callback_ms)}</td>
             </tr>
             <tr>
               <td className="px-4 py-3 text-gray-600">
                 <div className="font-medium">P95</div>
                 <div className="text-xs text-gray-400">95th percentile</div>
               </td>
-              <td className="px-4 py-3 text-center font-mono">{(results.sync.p95_ms / 1000).toFixed(2)}s</td>
-              <td className="px-4 py-3 text-center font-mono">{results.async.p95_ms.toFixed(0)}ms</td>
-              <td className="px-4 py-3 text-center font-mono">{(results.async.p95_callback_ms / 1000).toFixed(2)}s</td>
+              <td className="px-4 py-3 text-center font-mono">{formatTime(results.sync.p95_ms)}</td>
+              <td className="px-4 py-3 text-center font-mono">{formatTime(results.async.p95_ms)}</td>
+              <td className="px-4 py-3 text-center font-mono">{formatTime(results.async.p95_callback_ms)}</td>
             </tr>
             <tr>
               <td className="px-4 py-3 text-gray-600">
                 <div className="font-medium">P99</div>
                 <div className="text-xs text-gray-400">99th percentile</div>
               </td>
-              <td className="px-4 py-3 text-center font-mono">{(results.sync.p99_ms / 1000).toFixed(2)}s</td>
-              <td className="px-4 py-3 text-center font-mono">{results.async.p99_ms.toFixed(0)}ms</td>
+              <td className="px-4 py-3 text-center font-mono">{formatTime(results.sync.p99_ms)}</td>
+              <td className="px-4 py-3 text-center font-mono">{formatTime(results.async.p99_ms)}</td>
               <td className="px-4 py-3 text-center font-mono text-gray-400">-</td>
             </tr>
           </tbody>

@@ -8,7 +8,7 @@ interface ResilienceTestingProps {
   rateLimitRunning: boolean
   onGenerateKey: () => void
   onTestIdempotency: () => void
-  onTestRateLimit: () => void
+  onTestRateLimit: (endpoint: 'sync' | 'async') => void
 }
 
 export function ResilienceTesting({
@@ -138,7 +138,7 @@ function IdempotencyTest({ idempotencyKey, setIdempotencyKey, results, onGenerat
 interface RateLimitTestProps {
   results: RateLimitResults | null
   running: boolean
-  onTest: () => void
+  onTest: (endpoint: 'sync' | 'async') => void
 }
 
 function RateLimitTest({ results, running, onTest }: RateLimitTestProps) {
@@ -148,7 +148,7 @@ function RateLimitTest({ results, running, onTest }: RateLimitTestProps) {
         <span className="text-lg">🚦</span> Rate Limit Test
       </h3>
       <p className="text-sm text-gray-500 mb-4">
-        Spam requests to trigger rate limiting (30 req/min for sync endpoint).
+        Spam requests to trigger rate limiting.
       </p>
 
       <div className="bg-gray-50 rounded-lg p-3 mb-4">
@@ -159,72 +159,54 @@ function RateLimitTest({ results, running, onTest }: RateLimitTestProps) {
         </div>
       </div>
 
-      <button
-        onClick={onTest}
-        disabled={running}
-        className="w-full bg-orange-500 text-white font-semibold py-2.5 rounded-xl hover:bg-orange-600 disabled:opacity-50 flex items-center justify-center gap-2"
-      >
-        {running && (
-          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-        )}
-        {running ? 'Spamming requests...' : 'Test Rate Limit (40 requests)'}
-      </button>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={() => onTest('sync')}
+          disabled={running}
+          className="bg-red-500 text-white font-semibold py-2.5 rounded-xl hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+        >
+          {running && results?.endpoint === 'sync' && (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          )}
+          Test Sync
+        </button>
+        <button
+          onClick={() => onTest('async')}
+          disabled={running}
+          className="bg-blue-500 text-white font-semibold py-2.5 rounded-xl hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+        >
+          {running && results?.endpoint === 'async' && (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          )}
+          Test Async
+        </button>
+      </div>
 
       {results && (
         <div className="mt-4">
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            <div className="text-center p-2 bg-gray-50 rounded-lg">
-              <div className="text-xl font-bold text-gray-700">{results.sent}</div>
-              <div className="text-xs text-gray-500">Sent</div>
+          <div className={`p-4 rounded-xl ${results.rateLimited > 0 ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${
+                results.endpoint === 'sync' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+              }`}>
+                {results.endpoint}
+              </span>
+              {results.rateLimited > 0 && (
+                <span className="text-green-600 text-xs font-medium flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Rate limiting working!
+                </span>
+              )}
             </div>
-            <div className="text-center p-2 bg-green-50 rounded-lg">
-              <div className="text-xl font-bold text-green-600">{results.succeeded}</div>
-              <div className="text-xs text-gray-500">Succeeded</div>
+            <div className="text-lg font-semibold text-gray-800">
+              {results.succeeded} requests sent, <span className="text-red-600">{results.rateLimited} blocked</span>
             </div>
-            <div className="text-center p-2 bg-red-50 rounded-lg">
-              <div className="text-xl font-bold text-red-600">{results.rateLimited}</div>
-              <div className="text-xs text-gray-500">Rate Limited</div>
+            <div className="text-xs text-gray-500 mt-1">
+              Limit: {results.endpoint === 'sync' ? '30' : '60'} requests/minute
             </div>
           </div>
-
-          {/* Blocked Requests List */}
-          {results.requests && results.requests.length > 0 && (
-            <div className="mb-3 max-h-32 overflow-y-auto">
-              <div className="text-xs font-medium text-gray-600 mb-1">Request Log:</div>
-              <div className="space-y-1">
-                {results.requests.map((req) => (
-                  <div
-                    key={req.index}
-                    className={`text-xs px-2 py-1 rounded flex items-center justify-between ${
-                      req.blocked
-                        ? 'bg-red-50 text-red-700 border border-red-200'
-                        : 'bg-green-50 text-green-700 border border-green-200'
-                    }`}
-                  >
-                    <span>
-                      Request #{req.index}
-                    </span>
-                    <span className={`font-mono font-semibold ${req.blocked ? 'text-red-600' : 'text-green-600'}`}>
-                      {req.status} {req.blocked ? '🚫 BLOCKED' : '✓'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {results.rateLimited > 0 ? (
-            <div className="text-xs text-green-600 bg-green-50 p-2 rounded flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Rate limiting is working! Requests after #{results.succeeded} were blocked.
-            </div>
-          ) : (
-            <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded">
-              No rate limiting triggered. Try again or wait for the limit window to reset.
-            </div>
-          )}
         </div>
       )}
     </div>

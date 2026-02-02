@@ -65,6 +65,7 @@ export function RequestHistory({
                 <th className="text-left px-4 py-3 font-medium text-gray-600">ID</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Report</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Mode</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Queue #</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Job Status</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Webhook</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Idempotency</th>
@@ -129,6 +130,15 @@ function RequestRow({ request: req, onDelete, onViewCallbackLogs }: RequestRowPr
         }`}>
           {req.mode?.toUpperCase()}
         </span>
+      </td>
+      <td className="px-4 py-3">
+        {req.queue_position ? (
+          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-purple-100 text-purple-700">
+            #{req.queue_position}
+          </span>
+        ) : (
+          <span className="text-gray-300">-</span>
+        )}
       </td>
       <td className="px-4 py-3">
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${

@@ -10,7 +10,12 @@ START_TIME = datetime.now(timezone.utc)
 
 
 @router.get("/health")
+@router.get("/healthz")  # Kubernetes-style health check alias
 async def health_check():
+    """
+    Health check endpoint.
+    Returns minimal response in production, detailed info in development.
+    """
     is_prod = os.getenv("ENV") == "production"
 
     if is_prod:
@@ -25,7 +30,7 @@ async def health_check():
         "version": "0.1.0",
         "environment": "development",
         "services": {
-            "database": "connected",  # SQLite file-based
+            "database": "connected",
         },
         "python": {
             "version": platform.python_version(),
