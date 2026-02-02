@@ -33,6 +33,7 @@ function App() {
 
   // Async state
   const [asyncTransactions, setAsyncTransactions] = useState(100)
+  const [asyncLoading, setAsyncLoading] = useState(false)
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [failMode, setFailMode] = useState(false)
 
@@ -171,6 +172,8 @@ function App() {
     const tempId = `temp-${Date.now()}`
     const start = Date.now()
 
+    setAsyncLoading(true)
+
     // Optimistic update - add to queue immediately
     setQueue(prev => [{
       id: tempId,
@@ -206,6 +209,8 @@ function App() {
       // Remove failed item from queue
       setQueue(prev => prev.filter(q => q.id !== tempId))
       console.error('Failed to create async request', e)
+    } finally {
+      setAsyncLoading(false)
     }
   }
 
@@ -352,6 +357,7 @@ function App() {
             <AsyncCard
               transactions={asyncTransactions}
               setTransactions={setAsyncTransactions}
+              loading={asyncLoading}
               failMode={failMode}
               onGenerate={runAsync}
               onToggleFailMode={toggleFailMode}

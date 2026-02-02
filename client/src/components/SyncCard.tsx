@@ -46,8 +46,11 @@ export function SyncCard({
         <button
           onClick={onGenerate}
           disabled={loading}
-          className="w-full bg-red-500 text-white font-semibold py-3 rounded-xl hover:bg-red-600 disabled:opacity-50"
+          className="w-full bg-red-500 text-white font-semibold py-3 rounded-xl hover:bg-red-600 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
+          {loading && (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          )}
           {loading ? 'Generating...' : 'Generate Report (Sync)'}
         </button>
 
