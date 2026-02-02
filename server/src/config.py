@@ -9,10 +9,9 @@ ENV = os.getenv("ENV", "development")
 DEBUG = ENV == "development"
 
 # Database - PostgreSQL (Neon)
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://neondb_owner:npg_LngjGiS2ZP5I@ep-soft-sky-a18et3tx-pooler.ap-southeast-1.aws.neon.tech/neondb?ssl=require"
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable is required")
 
 # API
 API_PREFIX = "/api"
