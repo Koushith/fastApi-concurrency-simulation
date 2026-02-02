@@ -186,6 +186,33 @@ function RateLimitTest({ results, running, onTest }: RateLimitTestProps) {
               <div className="text-xs text-gray-500">Rate Limited</div>
             </div>
           </div>
+
+          {/* Blocked Requests List */}
+          {results.requests && results.requests.length > 0 && (
+            <div className="mb-3 max-h-32 overflow-y-auto">
+              <div className="text-xs font-medium text-gray-600 mb-1">Request Log:</div>
+              <div className="space-y-1">
+                {results.requests.map((req) => (
+                  <div
+                    key={req.index}
+                    className={`text-xs px-2 py-1 rounded flex items-center justify-between ${
+                      req.blocked
+                        ? 'bg-red-50 text-red-700 border border-red-200'
+                        : 'bg-green-50 text-green-700 border border-green-200'
+                    }`}
+                  >
+                    <span>
+                      Request #{req.index}
+                    </span>
+                    <span className={`font-mono font-semibold ${req.blocked ? 'text-red-600' : 'text-green-600'}`}>
+                      {req.status} {req.blocked ? '🚫 BLOCKED' : '✓'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {results.rateLimited > 0 ? (
             <div className="text-xs text-green-600 bg-green-50 p-2 rounded flex items-center gap-1">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

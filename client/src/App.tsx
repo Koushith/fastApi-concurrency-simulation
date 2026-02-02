@@ -289,6 +289,7 @@ function App() {
     let sent = 0
     let succeeded = 0
     let rateLimited = 0
+    const requests: { index: number; status: number; blocked: boolean; timestamp: number }[] = []
 
     for (let i = 0; i < 40; i++) {
       try {
@@ -298,19 +299,22 @@ function App() {
           body: JSON.stringify({ num_transactions: 5, report_name: `RateLimit_${i + 1}` }),
         })
         sent++
-        if (res.status === 429) {
+        const blocked = res.status === 429
+        requests.push({ index: i + 1, status: res.status, blocked, timestamp: Date.now() })
+
+        if (blocked) {
           rateLimited++
-          if (rateLimited >= 3) break
+          if (rateLimited >= 5) break
         } else if (res.ok) {
           succeeded++
         }
-        setRateLimitResults({ sent, succeeded, rateLimited })
+        setRateLimitResults({ sent, succeeded, rateLimited, requests: [...requests] })
       } catch {
         sent++
       }
     }
 
-    setRateLimitResults({ sent, succeeded, rateLimited })
+    setRateLimitResults({ sent, succeeded, rateLimited, requests })
     setRateLimitRunning(false)
   }
 

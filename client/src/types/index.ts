@@ -91,8 +91,16 @@ export interface IdempotencyResult {
   }
 }
 
+export interface RateLimitRequest {
+  index: number
+  status: number
+  blocked: boolean
+  timestamp: number
+}
+
 export interface RateLimitResults {
   sent: number
   succeeded: number
   rateLimited: number
+  requests: RateLimitRequest[]
 }
