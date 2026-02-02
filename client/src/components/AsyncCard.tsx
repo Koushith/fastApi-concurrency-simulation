@@ -1,7 +1,6 @@
 interface AsyncCardProps {
   transactions: number
   setTransactions: (n: number) => void
-  loading: boolean
   failMode: boolean
   onGenerate: () => void
   onToggleFailMode: () => void
@@ -10,7 +9,6 @@ interface AsyncCardProps {
 export function AsyncCard({
   transactions,
   setTransactions,
-  loading,
   failMode,
   onGenerate,
   onToggleFailMode,
@@ -37,13 +35,9 @@ export function AsyncCard({
         </div>
         <button
           onClick={onGenerate}
-          disabled={loading}
-          className="w-full bg-blue-500 text-white font-semibold py-3 rounded-xl hover:bg-blue-600 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full bg-blue-500 text-white font-semibold py-3 rounded-xl hover:bg-blue-600 cursor-pointer active:scale-[0.98] transition-transform"
         >
-          {loading && (
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-          )}
-          {loading ? 'Sending...' : 'Generate Report (Async)'}
+          Generate Report (Async)
         </button>
 
         <label className="flex items-center gap-2 mt-4 cursor-pointer">

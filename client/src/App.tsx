@@ -33,7 +33,6 @@ function App() {
 
   // Async state
   const [asyncTransactions, setAsyncTransactions] = useState(100)
-  const [asyncLoading, setAsyncLoading] = useState(false)
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [failMode, setFailMode] = useState(false)
 
@@ -166,13 +165,12 @@ function App() {
   }
 
   // Generate async report (optimistic UI update)
-  const runAsync = async () => {
+  // Note: No loading state that blocks - async should allow rapid clicks
+  const runAsync = () => {
     const reportName = `Report_${reportCounter++}`
     const idempKey = generateIdempotencyKey('async')
     const tempId = `temp-${Date.now()}`
     const start = Date.now()
-
-    setAsyncLoading(true)
 
     // Optimistic update - add to queue immediately
     setQueue(prev => [{
@@ -184,34 +182,33 @@ function App() {
       addedAt: Date.now()
     }, ...prev].slice(0, 20))
 
-    try {
-      const res = await fetch(`${API_BASE}/async`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Idempotency-Key': idempKey,
-        },
-        body: JSON.stringify({
-          payload: { num_transactions: asyncTransactions, report_name: reportName },
-          callback_url: `${SERVER_URL}/api/callbacks/receive`,
-        }),
+    // Fire and forget - don't await, don't block UI
+    fetch(`${API_BASE}/async`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': idempKey,
+      },
+      body: JSON.stringify({
+        payload: { num_transactions: asyncTransactions, report_name: reportName },
+        callback_url: `${SERVER_URL}/api/callbacks/receive`,
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        const ackTime = Date.now() - start
+        // Update with real ID and ack time
+        setQueue(prev => prev.map(q =>
+          q.id === tempId
+            ? { ...q, id: data.request_id, ackTime }
+            : q
+        ))
       })
-      const data = await res.json()
-      const ackTime = Date.now() - start
-
-      // Update with real ID and ack time
-      setQueue(prev => prev.map(q =>
-        q.id === tempId
-          ? { ...q, id: data.request_id, ackTime }
-          : q
-      ))
-    } catch (e) {
-      // Remove failed item from queue
-      setQueue(prev => prev.filter(q => q.id !== tempId))
-      console.error('Failed to create async request', e)
-    } finally {
-      setAsyncLoading(false)
-    }
+      .catch(e => {
+        // Remove failed item from queue
+        setQueue(prev => prev.filter(q => q.id !== tempId))
+        console.error('Failed to create async request', e)
+      })
   }
 
   // Run load test
@@ -357,7 +354,6 @@ function App() {
             <AsyncCard
               transactions={asyncTransactions}
               setTransactions={setAsyncTransactions}
-              loading={asyncLoading}
               failMode={failMode}
               onGenerate={runAsync}
               onToggleFailMode={toggleFailMode}
