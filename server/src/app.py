@@ -50,9 +50,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
-        "https://reports-generator-client.vercel.app",  # Production
+        "https://reports-generator-client.vercel.app",  # Production client on Vercel
     ],
-    allow_origin_regex=r"https://.*\.vercel\.app",  # Vercel preview deployments
+    allow_origin_regex=r"https://.*\.(vercel\.app|up\.railway\.app)",  # Vercel & Railway deployments
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

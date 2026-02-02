@@ -15,8 +15,8 @@ const config = {
     CLIENT_URL: 'http://localhost:5173',
   },
   production: {
-    SERVER_URL: 'https://reports-generator-server.vercel.app',
-    API_BASE_URL: 'https://reports-generator-server.vercel.app/api',
+    SERVER_URL: 'https://reports-generator-fastapi.up.railway.app',
+    API_BASE_URL: 'https://reports-generator-fastapi.up.railway.app/api',
     CLIENT_URL: 'https://reports-generator-client.vercel.app',
   },
 } as const

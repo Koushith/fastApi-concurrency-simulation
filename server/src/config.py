@@ -18,6 +18,6 @@ API_PREFIX = "/api"
 
 # Server URL (for self-referencing callbacks in benchmark)
 if ENV == "production":
-    SERVER_URL = os.getenv("SERVER_URL", "https://reports-generator-server.vercel.app")
+    SERVER_URL = os.getenv("SERVER_URL", "https://reports-generator-fastapi.up.railway.app")
 else:
     SERVER_URL = os.getenv("SERVER_URL", "http://localhost:8000")
