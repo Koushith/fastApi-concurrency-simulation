@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from src.config import API_PREFIX, DEBUG
 from src.database import init_db
 from src.routes.health import router as health_router
+from src.routes.api_routes import router as api_router
 
 
 @asynccontextmanager
@@ -22,6 +23,7 @@ app = FastAPI(
 )
 
 app.include_router(health_router, prefix=API_PREFIX)
+app.include_router(api_router, prefix=API_PREFIX)
 
 
 if __name__ == "__main__":

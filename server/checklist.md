@@ -14,16 +14,16 @@
 - [x] Create queue_service.py (Redis/RQ wrapper)
 
 ## API Endpoints
-- [ ] POST /sync - executes work inline, records < 50 limit
-- [ ] POST /async - queues work, returns 202 with request_id
-- [ ] GET /requests?mode=sync|async - list recent requests
-- [ ] GET /requests/{id} - get single request status
+- [x] POST /sync - executes work inline, records < 50 limit
+- [x] POST /async - queues work, returns 202 with request_id
+- [x] GET /requests?mode=sync|async - list recent requests
+- [x] GET /requests/{id} - get single request status
 - [ ] GET /health - update to check Redis & DB connections
 
 ## Worker
-- [ ] Create callback_worker.py (dequeue, process, callback)
-- [ ] SSRF protection (block localhost/private IPs)
-- [ ] Retry logic with exponential backoff (3 retries: 2s, 4s, 8s)
+- [x] Create callback_worker.py (dequeue, process, callback)
+- [x] SSRF protection (block localhost/private IPs)
+- [x] Retry logic with exponential backoff (3 retries: 2s, 4s, 8s)
 
 ## Infrastructure
 - [ ] docker-compose.yml (redis, api, worker services)

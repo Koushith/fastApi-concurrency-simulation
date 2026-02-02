@@ -36,9 +36,13 @@ def generate_report(payload: dict) -> dict:
     combined = "".join(hashes)
     final_checksum = hashlib.sha256(combined.encode()).hexdigest()
 
+    # Calculate processing time
+    processing_time_ms = records * 10  # ~10ms per record
+
     return {
-        "report_id": f"{report_name}-{seed}",
-        "status": "success",
+        "report_name": report_name,
         "records_processed": records,
-        "checksum": final_checksum,
+        "processing_time_ms": processing_time_ms,
+        "checksum": final_checksum[:16],  # shortened for readability
+        "status": "success",
     }

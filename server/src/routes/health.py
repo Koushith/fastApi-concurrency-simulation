@@ -19,7 +19,7 @@ async def health_check():
     uptime = datetime.now(timezone.utc) - START_TIME
 
     return {
-        "status": "healthy",
+        "status": "healthy........",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "uptime_seconds": int(uptime.total_seconds()),
         "version": "0.1.0",
