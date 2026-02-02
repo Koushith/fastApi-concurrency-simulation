@@ -20,7 +20,11 @@ from datetime import datetime, timedelta
 
 
 # Directory to store generated CSV reports
-REPORTS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "reports")
+# Use /tmp for serverless environments (Vercel), local path otherwise
+if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+    REPORTS_DIR = "/tmp/reports"
+else:
+    REPORTS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "reports")
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
 
