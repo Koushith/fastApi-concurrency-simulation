@@ -1,3 +1,10 @@
+"""
+Async Controller
+
+Handles asynchronous report generation - returns immediately with a
+request ID, then processes in background and calls webhook when done.
+"""
+
 from typing import Optional
 
 from fastapi import HTTPException
@@ -9,7 +16,12 @@ from src.services.background_worker import process_job_in_background
 
 async def handle_async_request(payload: dict, callback_url: str, db: AsyncSession, idempotency_key: Optional[str] = None) -> dict:
     """
-    Handle asynchronous request - starts background work, returns immediately.
+    Process report asynchronously (non-blocking).
+
+    - Creates DB record with PENDING status
+    - Spawns background thread to generate report
+    - Returns immediately with request ID
+    - Webhook called when complete (with retry logic)
     """
     if not callback_url:
         raise HTTPException(

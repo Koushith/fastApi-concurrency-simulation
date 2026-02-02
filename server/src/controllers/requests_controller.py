@@ -1,3 +1,9 @@
+"""
+Requests Controller
+
+CRUD operations for viewing and managing report requests.
+"""
+
 from typing import Literal, Optional
 
 from fastapi import HTTPException

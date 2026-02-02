@@ -1,3 +1,10 @@
+"""
+Sync Controller
+
+Handles synchronous report generation - the user waits while the
+report is generated and receives the result directly in the response.
+"""
+
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -10,8 +17,13 @@ from src.services.report_service import generate_report
 
 async def handle_sync_request(payload: dict, db: AsyncSession, idempotency_key: Optional[str] = None) -> dict:
     """
-    Handle synchronous request - executes work inline.
-    Limit: num_transactions < 100 (sync shouldn't allow huge jobs)
+    Process report synchronously (blocking).
+
+    - Creates DB record
+    - Generates report inline
+    - Returns result with download URL
+
+    Limited to <100 transactions to prevent timeouts.
     """
     num_transactions = payload.get("num_transactions", 50)
 

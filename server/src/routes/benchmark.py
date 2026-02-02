@@ -1,3 +1,12 @@
+"""
+Benchmark Endpoints
+
+Runs load tests to compare sync vs async API performance.
+- /benchmark/sync - Test sync endpoint with concurrent requests
+- /benchmark/async - Test async endpoint, optionally wait for callbacks
+- /benchmark/both - Run both and return comparison with speedup metric
+"""
+
 import asyncio
 import time
 
@@ -14,8 +23,9 @@ router = APIRouter()
 
 
 class BenchmarkConfig(BaseModel):
-    concurrency: int = 20
-    num_transactions: int = 50
+    """Configuration for benchmark tests."""
+    concurrency: int = 20  # Number of concurrent requests
+    num_transactions: int = 50  # Rows per report
 
 
 class BenchmarkResult(BaseModel):

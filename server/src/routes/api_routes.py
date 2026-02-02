@@ -1,3 +1,14 @@
+"""
+Core API Routes
+
+Endpoints:
+- POST /sync  - Synchronous report generation (blocks until complete)
+- POST /async - Asynchronous report generation (returns immediately, webhook callback)
+- GET/DELETE /requests - Request management
+- GET /reports/{file} - Download generated CSV files
+- GET /requests/{id}/callback-logs - View webhook delivery attempts
+"""
+
 import os
 from typing import Literal, Optional
 
@@ -17,37 +28,40 @@ from src.models import CallbackLog, Request as RequestModel
 
 router = APIRouter()
 
-# Rate limiter instance
+# Rate limiter - tracks requests per IP
 limiter = Limiter(key_func=get_remote_address)
 
-# Reports directory
+# Directory where generated CSV reports are stored
 REPORTS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "reports")
 
 
-# Request/Response schemas
+# --- Request Schemas ---
+
 class ReportPayload(BaseModel):
+    """Input for report generation."""
     num_transactions: int = 50
     report_name: str = "Monthly_Report"
 
 
 class AsyncRequestBody(BaseModel):
+    """Input for async endpoint (includes callback URL)."""
     payload: ReportPayload
     callback_url: str
 
 
 @router.post("/sync")
-@limiter.limit("30/minute")  # 30 requests per minute per IP
+@limiter.limit("30/minute")
 async def sync_endpoint(
-    request: Request,
+    request: Request,  # Required by rate limiter to get client IP
     payload: ReportPayload,
     db: AsyncSession = Depends(get_db),
     x_idempotency_key: Optional[str] = Header(None, alias="X-Idempotency-Key"),
 ):
     """
-    Synchronous endpoint - blocks until work completes.
+    Synchronous endpoint - blocks until report generation completes.
 
-    Headers:
-    - X-Idempotency-Key: Optional unique key to prevent duplicate processing
+    Rate limit: 30 requests/minute per IP
+    Idempotency: Pass X-Idempotency-Key header to prevent duplicate processing
     """
     # Check for existing request with same idempotency key
     if x_idempotency_key:
@@ -67,18 +81,19 @@ async def sync_endpoint(
 
 
 @router.post("/async", status_code=202)
-@limiter.limit("60/minute")  # 60 requests per minute per IP
+@limiter.limit("60/minute")
 async def async_endpoint(
-    request: Request,
+    request: Request,  # Required by rate limiter to get client IP
     body: AsyncRequestBody,
     db: AsyncSession = Depends(get_db),
     x_idempotency_key: Optional[str] = Header(None, alias="X-Idempotency-Key"),
 ):
     """
-    Asynchronous endpoint - returns immediately, calls back later.
+    Asynchronous endpoint - returns immediately with request ID.
+    Report is generated in background, webhook called when complete.
 
-    Headers:
-    - X-Idempotency-Key: Optional unique key to prevent duplicate processing
+    Rate limit: 60 requests/minute per IP
+    Idempotency: Pass X-Idempotency-Key header to prevent duplicate processing
     """
     # Check for existing request with same idempotency key
     if x_idempotency_key:

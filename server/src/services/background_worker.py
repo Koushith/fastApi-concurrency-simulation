@@ -1,4 +1,16 @@
-"""Simple background worker using threads (no fork issues on macOS)."""
+"""
+Background Worker for Async Report Processing
+
+Uses threads instead of multiprocessing to avoid fork issues on macOS.
+Each async request spawns a thread that:
+1. Generates the report (CPU-bound work)
+2. Sends webhook callback with retry logic
+
+Retry Strategy:
+- Max 3 attempts with exponential backoff (2s, 4s, 8s)
+- Only 5xx errors trigger retries (4xx are not retried)
+- Each attempt is logged to callback_logs table
+"""
 
 import threading
 import time
@@ -17,15 +29,13 @@ from src.models import (
     STATUS_PROCESSING,
     STATUS_COMPLETED,
     STATUS_FAILED,
-    CALLBACK_PENDING,
     CALLBACK_SUCCESS,
     CALLBACK_FAILED,
 )
 from src.services.report_service import generate_report
 
-# Sync DB connection for background thread
-# Convert async URL to sync: postgresql+asyncpg -> postgresql+psycopg2
-# Also convert ssl=require to sslmode=require for psycopg2
+# Synchronous DB connection for background threads
+# FastAPI uses async (asyncpg), but threads need sync (psycopg2)
 sync_db_url = (
     DATABASE_URL
     .replace("+asyncpg", "+psycopg2")
@@ -35,9 +45,9 @@ sync_db_url = (
 engine = create_engine(sync_db_url)
 Session = sessionmaker(bind=engine)
 
-# Retry configuration
+# Retry configuration for webhook callbacks
 MAX_RETRIES = 3
-RETRY_DELAYS = [2, 4, 8]  # Exponential backoff: 2s, 4s, 8s
+RETRY_DELAYS = [2, 4, 8]  # Exponential backoff in seconds
 
 
 def is_safe_callback_url(url: str) -> bool:

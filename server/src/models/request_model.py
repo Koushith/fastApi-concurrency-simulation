@@ -1,3 +1,10 @@
+"""
+Request Model
+
+Stores all report generation requests (both sync and async).
+Tracks status, results, callback delivery, and idempotency.
+"""
+
 import uuid
 from datetime import datetime, timezone
 from typing import Literal, Optional
@@ -8,24 +15,26 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from src.database import Base
 
-# Type aliases (like TypeScript)
+# Type hints for IDE support
 RequestMode = Literal["sync", "async"]
 RequestStatus = Literal["PENDING", "PROCESSING", "COMPLETED", "FAILED"]
 CallbackStatus = Literal["PENDING", "SUCCESS", "FAILED"]
 
-# Constants
+# Status constants
 STATUS_PENDING = "PENDING"
 STATUS_PROCESSING = "PROCESSING"
 STATUS_COMPLETED = "COMPLETED"
 STATUS_FAILED = "FAILED"
 
+# Callback status constants
 CALLBACK_PENDING = "PENDING"
 CALLBACK_SUCCESS = "SUCCESS"
 CALLBACK_FAILED = "FAILED"
 
 
-# SQLAlchemy model (class required by ORM)
 class Request(Base):
+    """Tracks a report generation request."""
+
     __tablename__ = "requests"
 
     id: Mapped[str] = mapped_column(

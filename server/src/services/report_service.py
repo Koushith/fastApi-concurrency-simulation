@@ -1,6 +1,17 @@
+"""
+Report Generation Service
+
+Simulates a CPU-intensive report generation process that:
+1. Generates realistic financial transaction data
+2. Creates a CSV file with the report
+3. Returns metadata including download URL
+
+The artificial delay (10ms per transaction) simulates real-world
+scenarios like database queries, aggregations, and file I/O.
+"""
+
 import csv
 import hashlib
-import io
 import os
 import random
 import time
@@ -8,21 +19,22 @@ import uuid
 from datetime import datetime, timedelta
 
 
-# Directory to store generated reports
+# Directory to store generated CSV reports
 REPORTS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "reports")
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
 
 def generate_report(payload: dict) -> dict:
     """
-    Generates a Monthly Financial Report as a CSV file.
+    Generate a financial report as a CSV file.
 
-    Input: {"num_transactions": 50, "report_name": "Q1_Finance"}
-    Output: {"file_id": "...", "file_name": "...", "download_url": "..."}
+    Args:
+        payload: {"num_transactions": 50, "report_name": "Q1_Finance"}
 
-    Performance:
-    - 10 transactions = ~100ms
-    - 100 transactions = ~1 second
+    Returns:
+        dict with file_id, file_name, download_url, and summary stats
+
+    Performance: ~10ms per transaction (simulated processing time)
     """
     num_transactions = payload.get("num_transactions", 50)
     report_name = payload.get("report_name", "Monthly_Report")
