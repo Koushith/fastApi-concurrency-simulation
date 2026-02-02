@@ -31,36 +31,7 @@ npm install && npm run dev
 
 ## Architecture
 
-```mermaid
-flowchart TB
-    subgraph Client
-        UI[React Frontend]
-    end
-
-    subgraph Backend[FastAPI Backend]
-        API[API Routes]
-        SC[Sync Controller]
-        AC[Async Controller]
-        RS[Report Service<br/>~10ms/row]
-        BW[Background Worker]
-    end
-
-    subgraph Database[PostgreSQL - Neon]
-        REQ[(requests)]
-        LOG[(callback_logs)]
-    end
-
-    UI -->|HTTP| API
-    API --> SC
-    API --> AC
-    SC --> RS
-    AC --> RS
-    RS -->|sync| RET[Direct Return]
-    RS -->|async| BW
-    BW --> REQ
-    BW --> LOG
-    BW -->|webhook| WH[Customer Webhook<br/>retry: 2s, 4s, 8s]
-```
+![Architecture Diagram](docs/architecture.svg)
 
 ### Request Flow
 
