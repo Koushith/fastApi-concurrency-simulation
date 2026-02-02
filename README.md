@@ -31,52 +31,60 @@ npm install && npm run dev
 
 ## Architecture
 
-```
-┌─────────────┐     ┌─────────────────────────────────────────┐
-│   React     │     │              FastAPI Backend            │
-│   Frontend  │────▶│                                         │
-└─────────────┘     │  ┌─────────┐  ┌─────────┐  ┌─────────┐ │
-                    │  │  Sync   │  │  Async  │  │ Bench-  │ │
-                    │  │ Controller│ │Controller│ │  mark   │ │
-                    │  └────┬────┘  └────┬────┘  └─────────┘ │
-                    │       │            │                    │
-                    │       ▼            ▼                    │
-                    │  ┌─────────────────────────────────┐   │
-                    │  │      Report Service             │   │
-                    │  │   (CSV Generation ~10ms/row)    │   │
-                    │  └─────────────────────────────────┘   │
-                    │                    │                    │
-                    │       ┌────────────┴────────────┐      │
-                    │       ▼                         ▼      │
-                    │  ┌─────────┐            ┌───────────┐  │
-                    │  │ Direct  │            │ Background│  │
-                    │  │ Return  │            │  Thread   │  │
-                    │  └─────────┘            └─────┬─────┘  │
-                    └───────────────────────────────│────────┘
-                                                    │
-                    ┌───────────────────────────────▼────────┐
-                    │           PostgreSQL (Neon)            │
-                    │  ┌──────────┐      ┌───────────────┐   │
-                    │  │ requests │      │ callback_logs │   │
-                    │  └──────────┘      └───────────────┘   │
-                    └────────────────────────────────────────┘
-                                                    │
-                                    ┌───────────────▼───────────────┐
-                                    │   Webhook Callback            │
-                                    │   (with retry: 2s, 4s, 8s)    │
-                                    └───────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Client
+        UI[React Frontend]
+    end
+
+    subgraph Backend[FastAPI Backend]
+        API[API Routes]
+        SC[Sync Controller]
+        AC[Async Controller]
+        RS[Report Service<br/>~10ms/row]
+        BW[Background Worker]
+    end
+
+    subgraph Database[PostgreSQL - Neon]
+        REQ[(requests)]
+        LOG[(callback_logs)]
+    end
+
+    UI -->|HTTP| API
+    API --> SC
+    API --> AC
+    SC --> RS
+    AC --> RS
+    RS -->|sync| RET[Direct Return]
+    RS -->|async| BW
+    BW --> REQ
+    BW --> LOG
+    BW -->|webhook| WH[Customer Webhook<br/>retry: 2s, 4s, 8s]
 ```
 
 ### Request Flow
 
-**Sync (`POST /api/sync`):**
-```
-Client → API → Generate Report → Return Result (blocks 1-5s)
-```
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant A as API
+    participant R as Report Service
+    participant D as Database
+    participant W as Webhook
 
-**Async (`POST /api/async`):**
-```
-Client → API → Return ACK (20ms) → Background Thread → Generate → Webhook
+    Note over C,W: Sync Flow (blocking)
+    C->>+A: POST /api/sync
+    A->>+R: Generate Report
+    R-->>-A: CSV Ready
+    A-->>-C: Return Result (1-5s)
+
+    Note over C,W: Async Flow (non-blocking)
+    C->>+A: POST /api/async
+    A-->>-C: Return ACK (20ms)
+    A->>+R: Background Thread
+    R->>D: Save Result
+    R->>W: POST Callback
+    W-->>R: 200 OK
 ```
 
 ---
