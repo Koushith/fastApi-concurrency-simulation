@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,23 +8,24 @@ from src.models import Request, STATUS_COMPLETED, STATUS_FAILED
 from src.services.report_service import generate_report
 
 
-async def handle_sync_request(payload: dict, db: AsyncSession) -> dict:
+async def handle_sync_request(payload: dict, db: AsyncSession, idempotency_key: Optional[str] = None) -> dict:
     """
     Handle synchronous request - executes work inline.
-    Limit: records < 50 (sync shouldn't allow huge jobs)
+    Limit: num_transactions < 100 (sync shouldn't allow huge jobs)
     """
-    records = payload.get("records", 10)
+    num_transactions = payload.get("num_transactions", 50)
 
-    if records >= 50:
+    if num_transactions >= 100:
         raise HTTPException(
             status_code=400,
-            detail="Sync endpoint limited to < 50 records. Use /async for larger jobs.",
+            detail="Sync endpoint limited to < 100 transactions. Use /async for larger reports.",
         )
 
     # Create DB record
     request = Request(
         mode="sync",
         input_payload=payload,
+        idempotency_key=idempotency_key,
     )
     db.add(request)
     await db.commit()

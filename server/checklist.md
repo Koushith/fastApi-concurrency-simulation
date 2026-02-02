@@ -1,37 +1,73 @@
-# Feature Checklist
+# Requirements Checklist
 
-## Setup & Config
-- [x] Restructure folders to match spec (models/, controllers/, services/, workers/)
-- [x] Create config.py (REDIS_URL, DB_URL, etc.)
-- [x] Update requirements.txt with all dependencies
+Based on `problem-context.md`
 
-## Database
-- [x] Setup SQLAlchemy async with SQLite
-- [x] Create Request model (id, mode, status, input_payload, result_payload, callback_url, created_at, completed_at)
+## Core Endpoints
 
-## Services
-- [x] Create report_service.py (generate_report with CPU/IO simulation)
-- [x] Create queue_service.py (Redis/RQ wrapper)
+- [x] **POST /sync** - Request comes in, response returned inline
+- [x] **POST /async** - Request comes in, returns ACK with request_id, calls callback later
+- [x] **GET /requests** - Query recent requests (with optional `?mode=sync|async` filter)
+- [x] **GET /requests/{id}** - Get single request details
+- [x] **GET /healthz** - Health check endpoint
+- [x] **DELETE /requests** - Delete all requests
+- [x] **DELETE /requests/{id}** - Delete single request
+- [x] **GET /reports/{filename}** - Download generated CSV file
 
-## API Endpoints
-- [x] POST /sync - executes work inline, records < 50 limit
-- [x] POST /async - queues work, returns 202 with request_id
-- [x] GET /requests?mode=sync|async - list recent requests
-- [x] GET /requests/{id} - get single request status
-- [ ] GET /health - update to check Redis & DB connections
+## Core Requirements
 
-## Worker
-- [x] Create callback_worker.py (dequeue, process, callback)
-- [x] SSRF protection (block localhost/private IPs)
-- [x] Retry logic with exponential backoff (3 retries: 2s, 4s, 8s)
+- [x] **Shared work logic** - Same `generate_report()` function used by both sync and async
+- [x] **Persist state** - SQLite database stores all requests
+- [x] **Trace async requests** - Can track status, callback delivery, retry attempts
 
-## Infrastructure
-- [ ] docker-compose.yml (redis, api, worker services)
-- [ ] Dockerfile for API
+## Callback Handling
 
-## Testing
-- [ ] Load generator script (sync test, async test, callback listener)
-- [ ] Summary output (p50/p95/p99 latency, success/failure counts)
+- [x] **Callback failures handled** - Retry with exponential backoff (2s, 4s, 8s)
+- [x] **SSRF protection** - Block localhost, 127.0.0.1, private IPs
+- [x] **Test webhook endpoint** - `/api/webhook/test` for demo (bypasses SSRF for localhost)
 
-## Documentation
-- [ ] README.md with setup & run instructions
+## Load Generator
+
+- [x] **High volume requests** - Can fire concurrent requests via frontend or CLI
+- [x] **Summary stats** - Shows total requests, success/failure, latency comparison
+- [x] **P50/P95/P99 stats** - Available via `/api/benchmark/sync` and `/api/benchmark/async`
+- [x] **Time-to-callback stats** - CLI load generator tracks callback times
+
+## Deliverables
+
+- [x] **Python backend** - FastAPI with async SQLAlchemy
+- [x] **README.md** - How to run locally, load generator usage, design decisions
+- [x] **Frontend demo** - React UI to visualize sync vs async
+
+## API Parameter: `num_transactions`
+
+The payload uses `num_transactions` to specify how many financial transactions to include in the report:
+- Sync: Limited to < 100 transactions
+- Async: No limit
+
+Example:
+```json
+{
+  "num_transactions": 50,
+  "report_name": "Q1_Finance"
+}
+```
+
+## Generated Output
+
+CSV file with realistic financial data:
+- Transaction ID, Date, Type, Category, Description, Amount
+- Summary header with Total Revenue, Expenses, Net Income
+- Download via `/api/reports/{filename}`
+
+## Files Updated
+
+| File | Status | Description |
+|------|--------|-------------|
+| `src/routes/api_routes.py` | ✅ | Uses `num_transactions`, has download endpoint |
+| `src/controllers/sync_controller.py` | ✅ | Uses `num_transactions`, limit < 100 |
+| `src/controllers/async_controller.py` | ✅ | Uses `num_transactions` |
+| `src/services/report_service.py` | ✅ | Generates CSV with financial data |
+| `src/services/background_worker.py` | ✅ | Retry logic with exponential backoff |
+| `src/routes/benchmark.py` | ✅ | Uses `num_transactions` |
+| `tests/load_generator.py` | ✅ | Uses `num_transactions` |
+| `client/src/App.tsx` | ✅ | Uses `num_transactions`, shows download button |

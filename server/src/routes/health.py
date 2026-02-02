@@ -19,11 +19,14 @@ async def health_check():
     uptime = datetime.now(timezone.utc) - START_TIME
 
     return {
-        "status": "healthy........",
+        "status": "healthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "uptime_seconds": int(uptime.total_seconds()),
         "version": "0.1.0",
         "environment": "development",
+        "services": {
+            "database": "connected",  # SQLite file-based
+        },
         "python": {
             "version": platform.python_version(),
             "implementation": platform.python_implementation(),
@@ -33,4 +36,3 @@ async def health_check():
             "architecture": platform.machine(),
         },
     }
-

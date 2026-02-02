@@ -8,11 +8,11 @@ load_dotenv()
 ENV = os.getenv("ENV", "development")
 DEBUG = ENV == "development"
 
-# Database
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./app.db")
-
-# Redis
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+# Database - PostgreSQL (Neon)
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://neondb_owner:npg_LngjGiS2ZP5I@ep-soft-sky-a18et3tx-pooler.ap-southeast-1.aws.neon.tech/neondb?ssl=require"
+)
 
 # API
 API_PREFIX = "/api"
