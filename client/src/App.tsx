@@ -107,9 +107,10 @@ function App() {
   // Poll queue for updates
   useEffect(() => {
     const needsUpdate = queue.filter(q =>
-      q.status === 'queued' ||
+      !q.id.startsWith('temp-') && // Skip temp IDs (optimistic updates)
+      (q.status === 'queued' ||
       q.status === 'processing' ||
-      (q.status === 'completed' && q.callbackStatus !== 'SUCCESS' && q.callbackStatus !== 'FAILED')
+      (q.status === 'completed' && q.callbackStatus !== 'SUCCESS' && q.callbackStatus !== 'FAILED'))
     )
     if (needsUpdate.length === 0) return
 
