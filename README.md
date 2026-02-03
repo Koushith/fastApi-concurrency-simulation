@@ -8,6 +8,48 @@ Demonstrates two API patterns: **Sync** (blocking) vs **Async** (webhook callbac
 ![FastAPI](https://img.shields.io/badge/fastapi-0.100+-orange)
 ![React](https://img.shields.io/badge/react-18+-blue)
 
+---
+
+## Requirements Checklist
+
+### Core Requirements
+
+| Requirement | Status | Implementation |
+|-------------|--------|----------------|
+| `POST /sync` - returns result inline | ✅ | Blocks until report generated |
+| `POST /async` - returns ack, calls callback later | ✅ | Returns `request_id` + `queue_position` |
+| Shared work logic between sync/async | ✅ | `report_generator.py` used by both |
+| Query recent requests | ✅ | `GET /requests?mode=sync\|async` |
+| Trace async through callback delivery | ✅ | `callback_logs` table |
+
+### Load Generator
+
+| Requirement | Status |
+|-------------|--------|
+| Total requests sent, success/failure | ✅ |
+| Latency p50/p95/p99 for sync | ✅ |
+| Time-to-callback stats for async | ✅ |
+
+### Edge Cases & Gotchas
+
+| Gotcha | Status | Implementation |
+|--------|--------|----------------|
+| Callback failures | ✅ | Exponential backoff retry (2s, 4s, 8s), only 5xx retries |
+| Ordering/timing guarantees | ✅ | FIFO queue + single worker thread |
+| Scales under high volume | ✅ | Rate limiting (30/min sync, 60/min async) |
+| Prevents callback abuse | ✅ | SSRF protection (blocks localhost, private IPs) |
+
+### Bonus Features (not required)
+
+| Feature | Description |
+|---------|-------------|
+| Idempotency | `X-Idempotency-Key` header prevents duplicate processing |
+| Frontend UI | Interactive demo for all features |
+| Request management | Delete single/all requests |
+| Callback logs viewer | Trace webhook delivery attempts |
+
+---
+
 ## Live Demo
 
 Try the production deployment:
