@@ -16,7 +16,7 @@ Try the production deployment:
 |----------|-----|
 | **API** | https://reports-generator-fastapi.up.railway.app |
 | **API Docs** | https://reports-generator-fastapi.up.railway.app/docs |
-| **Health Check** | https://reports-generator-fastapi.up.railway.app/api/health |
+| **Health Check** | https://reports-generator-fastapi.up.railway.app/api/healthz |
 
 ## Local Development
 
@@ -172,7 +172,7 @@ curl -X POST http://localhost:8000/api/async \
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/health` | Health check with system info |
+| `GET` | `/api/healthz` | Health check with system info |
 | `GET` | `/api/requests/{id}/callback-logs` | View webhook retry history |
 | `POST` | `/api/benchmark/both` | Run load test comparison |
 
