@@ -10,7 +10,6 @@ START_TIME = datetime.now(timezone.utc)
 
 
 @router.get("/health")
-@router.get("/healthz")  # Kubernetes-style health check alias
 async def health_check():
     """
     Health check endpoint.

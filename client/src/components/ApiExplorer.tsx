@@ -10,7 +10,7 @@ interface ApiExplorerProps {
 
 export function ApiExplorer({ result, lookupId, setLookupId, setResult, onDeleteAll }: ApiExplorerProps) {
   const fetchHealth = async () => {
-    const res = await fetch(`${API_BASE}/healthz`)
+    const res = await fetch(`${API_BASE}/health`)
     setResult({ type: 'health', data: await res.json() })
   }
 
@@ -46,7 +46,7 @@ export function ApiExplorer({ result, lookupId, setLookupId, setResult, onDelete
             className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-lg hover:bg-green-100 transition-colors"
           >
             <span className="font-mono text-xs bg-green-200 px-1.5 py-0.5 rounded">GET</span>
-            <span className="text-sm font-medium">/api/healthz</span>
+            <span className="text-sm font-medium">/api/health</span>
           </button>
 
           <button

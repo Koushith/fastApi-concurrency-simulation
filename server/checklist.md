@@ -9,7 +9,7 @@
 - [x] `DELETE /api/requests` - Delete all requests
 - [x] `DELETE /api/requests/{id}` - Delete single request
 - [x] `GET /api/reports/{file}` - Download CSV file
-- [x] `GET /api/healthz` - Health check with system info
+- [x] `GET /api/health` - Health check with system info
 
 ## Resilience Features
 
