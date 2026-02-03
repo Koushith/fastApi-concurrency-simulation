@@ -39,7 +39,7 @@ Demonstrates two API patterns: **Sync** (blocking) vs **Async** (webhook callbac
 | Scales under high volume | ✅ | Rate limiting (30/min sync, 60/min async) |
 | Prevents callback abuse | ✅ | SSRF protection (blocks localhost, private IPs) |
 
-### Bonus Features (not required)
+### Bonus Features 
 
 | Feature | Description |
 |---------|-------------|
@@ -157,7 +157,7 @@ flowchart TB
     CALLBACK -->|Log attempts| LOGS
 ```
 
-### How It Works
+### How It Works??
 
 | Component | Description |
 |-----------|-------------|
@@ -265,8 +265,6 @@ def _fifo_worker():
         _job_queue.task_done()                    # Mark complete, get next
 ```
 
-**Why this guarantees order:**
-
 1. **Single Queue**: All async requests go into one `queue.Queue` - Python's implementation is thread-safe and strictly FIFO
 2. **Single Worker**: Only ONE background thread pulls from the queue. No race conditions.
 3. **Blocking Process**: Worker calls `_job_queue.get(block=True)` which:
@@ -275,12 +273,6 @@ def _fifo_worker():
    - Only gets the next job after current one completes
 4. **Atomic Position Counter**: `queue_position` is assigned with a lock, ensuring unique sequential numbers
 
-**Why single worker?**
-| Approach | FIFO Guarantee | Complexity |
-|----------|---------------|------------|
-| **Single worker (chosen)** | ✅ Strict | Simple |
-| Thread pool | ❌ Race conditions | Medium |
-| Multiple workers | ❌ Out of order | Complex |
 
 ### Idempotency
 Prevent duplicate processing with `X-Idempotency-Key` header:
@@ -307,7 +299,7 @@ Failed webhooks retry with exponential backoff:
 | 3 | 4 seconds |
 | 4 | 8 seconds |
 
-Only 5xx errors trigger retries. 4xx errors are not retried.
+Only 5xx errors trigger retries. 4xx errors are not retried. 4xx are considered client errors and are not retried.
 
 ### SSRF Protection
 Callback URLs are validated to block:
