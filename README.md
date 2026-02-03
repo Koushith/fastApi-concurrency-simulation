@@ -4,28 +4,70 @@ Simulates a **financial report generation system** - the kind you'd see in finte
 
 Demonstrates two API patterns: **Sync** (blocking) vs **Async** (webhook callback) with production-ready features like FIFO ordering, retry logic, and rate limiting.
 
-![Demo](https://img.shields.io/badge/demo-localhost:5173-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![FastAPI](https://img.shields.io/badge/fastapi-0.100+-orange)
+![React](https://img.shields.io/badge/react-18+-blue)
 
-## Quick Start
+## Live Demo
+
+Try the production deployment:
+
+| Resource | URL |
+|----------|-----|
+| **API** | https://reports-generator-fastapi.up.railway.app |
+| **API Docs** | https://reports-generator-fastapi.up.railway.app/docs |
+| **Health Check** | https://reports-generator-fastapi.up.railway.app/api/health |
+
+## Local Development
+
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- PostgreSQL database (or use [Neon](https://neon.tech) free tier)
+
+### Backend Setup
 
 ```bash
-# Backend
 cd server
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env  # Add your DATABASE_URL
-fastapi dev src/app.py
-
-# Frontend
-cd client
-npm install && npm run dev
 ```
 
-- Backend: http://localhost:8000
-- Frontend: http://localhost:5173
-- API Docs: http://localhost:8000/docs
+Create `.env` file from template:
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your database URL:
+```env
+# For Neon serverless PostgreSQL:
+DATABASE_URL=postgresql+asyncpg://user:password@ep-xxx.region.aws.neon.tech/dbname?ssl=require
+
+# For local PostgreSQL:
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/dbname
+```
+
+Start the server:
+```bash
+fastapi dev src/app.py
+```
+
+### Frontend Setup
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+### Local URLs
+
+| Resource | URL |
+|----------|-----|
+| Frontend | http://localhost:5173 |
+| Backend | http://localhost:8000 |
+| API Docs (Swagger) | http://localhost:8000/docs |
+| API Docs (ReDoc) | http://localhost:8000/redoc |
 
 ---
 
