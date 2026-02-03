@@ -56,6 +56,7 @@ Try the production deployment:
 
 | Resource | URL |
 |----------|-----|
+| **Demo Video** | [Watch on Google Drive](https://drive.google.com/file/d/13-mAbgrVpTC7QFEOnAy9zIQ8qMygY9Rm/view) |
 | **API** | https://reports-generator-fastapi.up.railway.app |
 | **API Docs** | https://reports-generator-fastapi.up.railway.app/docs |
 | **Health Check** | https://reports-generator-fastapi.up.railway.app/api/health |
