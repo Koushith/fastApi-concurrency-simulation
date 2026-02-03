@@ -1,8 +1,8 @@
 # Financial Report Generator
 
-API pattern simulator comparing **Sync** (blocking) vs **Async** (webhook callback) request handling.
+Simulates a **financial report generation system** - the kind you'd see in fintech platforms where users request reports that take time to generate.
 
-Built for a take-home assignment demonstrating production-ready API design patterns.
+Demonstrates two API patterns: **Sync** (blocking) vs **Async** (webhook callback) with production-ready features like FIFO ordering, retry logic, and rate limiting.
 
 ![Demo](https://img.shields.io/badge/demo-localhost:5173-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
@@ -94,52 +94,6 @@ Client → POST /sync → Generate Report (blocking) → Return CSV URL
 Client → POST /async → ACK (instant) → Queue → Worker → Generate → Webhook callback
 ```
 
-### FIFO Queue - Ordering Guarantee
-
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant A as API
-    participant Q as FIFO Queue
-    participant W as Worker
-    participant DB as Database
-
-    Note over Q,W: Single worker processes<br/>jobs sequentially
-
-    C->>A: POST /async (Job 1)
-    A->>DB: Create request (queue_position=1)
-    A->>Q: Enqueue Job 1
-    A-->>C: ACK {queue_position: 1}
-
-    C->>A: POST /async (Job 2)
-    A->>DB: Create request (queue_position=2)
-    A->>Q: Enqueue Job 2
-    A-->>C: ACK {queue_position: 2}
-
-    C->>A: POST /async (Job 3)
-    A->>DB: Create request (queue_position=3)
-    A->>Q: Enqueue Job 3
-    A-->>C: ACK {queue_position: 3}
-
-    Note over W: Jobs complete in<br/>submission order
-
-    W->>Q: Dequeue (FIFO)
-    Q-->>W: Job 1
-    W->>DB: Process Job 1
-    W-->>C: Callback Job 1
-
-    W->>Q: Dequeue (FIFO)
-    Q-->>W: Job 2
-    W->>DB: Process Job 2
-    W-->>C: Callback Job 2
-
-    W->>Q: Dequeue (FIFO)
-    Q-->>W: Job 3
-    W->>DB: Process Job 3
-    W-->>C: Callback Job 3
-```
-
----
 
 ## API Endpoints
 
