@@ -93,7 +93,14 @@ DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/dbname
 
 Start the server:
 ```bash
+# Make sure venv is activated first
+source venv/bin/activate
+
+# Development mode (auto-reload)
 fastapi dev src/app.py
+
+# Or production mode
+fastapi run src/app.py
 ```
 
 ### Frontend Setup

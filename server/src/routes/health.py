@@ -29,7 +29,7 @@ async def health_check():
         "version": "0.1.0",
         "environment": "development",
         "services": {
-            "database": "connected",
+            "database": "connected", #do some checks. all are hardcoded
         },
         "python": {
             "version": platform.python_version(),

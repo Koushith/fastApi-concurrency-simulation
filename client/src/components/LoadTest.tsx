@@ -35,7 +35,11 @@ export function LoadTest({ config, setConfig, running, results, onRun }: LoadTes
             <input
               type="number"
               value={config.concurrency}
-              onChange={(e) => setConfig({ ...config, concurrency: Math.max(1, +e.target.value || 1) })}
+              onChange={(e) => {
+                const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
+                if (!isNaN(val)) setConfig({ ...config, concurrency: Math.max(0, val) })
+              }}
+              onBlur={() => { if (config.concurrency < 1) setConfig({ ...config, concurrency: 1 }) }}
               className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-sm"
             />
           </div>
@@ -44,7 +48,11 @@ export function LoadTest({ config, setConfig, running, results, onRun }: LoadTes
             <input
               type="number"
               value={config.rowsPerReport}
-              onChange={(e) => setConfig({ ...config, rowsPerReport: Math.max(1, +e.target.value || 1) })}
+              onChange={(e) => {
+                const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
+                if (!isNaN(val)) setConfig({ ...config, rowsPerReport: Math.max(0, val) })
+              }}
+              onBlur={() => { if (config.rowsPerReport < 1) setConfig({ ...config, rowsPerReport: 1 }) }}
               className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-sm"
             />
           </div>

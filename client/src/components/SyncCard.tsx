@@ -38,7 +38,11 @@ export function SyncCard({
           <input
             type="number"
             value={transactions}
-            onChange={(e) => setTransactions(Math.min(99, Math.max(1, +e.target.value || 1)))}
+            onChange={(e) => {
+              const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
+              if (!isNaN(val)) setTransactions(Math.min(99, Math.max(0, val)))
+            }}
+            onBlur={() => { if (transactions < 1) setTransactions(1) }}
             className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm"
           />
           <span className="text-xs text-gray-400">max 99</span>

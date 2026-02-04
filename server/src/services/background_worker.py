@@ -14,7 +14,7 @@ Architecture:
 Why single worker instead of thread-per-request?
 - FIFO guarantee: Jobs complete in submission order
 - Predictable: No race conditions between concurrent jobs
-- Traceable: Queue position shows exact processing order
+- Queue position shows exact processing order
 - Production-ready: Easily replaceable with Celery/Redis queue
 
 Retry Strategy for Callbacks:
@@ -151,16 +151,20 @@ def enqueue_job(request_id: str) -> int:
     Returns:
         queue_position: The position in the FIFO queue (1-based)
     """
-    # Get queue position BEFORE adding to queue (for atomicity)
-    position = _get_next_queue_position()
-
-    # Update the request with its queue position
+    # Check if queue_position already set (by async_controller)
     session = Session()
+    position = None
     try:
         request = session.query(Request).filter(Request.id == request_id).first()
         if request:
-            request.queue_position = position
-            session.commit()
+            if request.queue_position:
+                # Already set by async_controller
+                position = request.queue_position
+            else:
+                # Fallback: set it now
+                position = _get_next_queue_position()
+                request.queue_position = position
+                session.commit()
     finally:
         session.close()
 
@@ -171,7 +175,7 @@ def enqueue_job(request_id: str) -> int:
     _ensure_worker_running()
 
     print(f"[FIFO Queue] Enqueued job {request_id[:8]}... at position {position}")
-    return position
+    return position or 0
 
 
 def get_queue_status() -> dict:
@@ -405,3 +409,5 @@ def process_job_in_background(request_id: str):
     the FIFO queue internally.
     """
     return enqueue_job(request_id)
+
+

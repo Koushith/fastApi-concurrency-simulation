@@ -1,6 +1,14 @@
 import type { QueueItem } from '../types'
 import { copyToClipboard, SERVER_URL } from '../utils'
 
+/** Format time consistently: <1000ms shows as "XXms", >=1000ms shows as "X.Xs" */
+function formatTime(ms: number): string {
+  if (ms < 1000) {
+    return `${Math.round(ms)}ms`
+  }
+  return `${(ms / 1000).toFixed(1)}s`
+}
+
 interface AsyncQueueProps {
   queue: QueueItem[]
   onClear: () => void
@@ -99,11 +107,6 @@ function QueueItemRow({ item }: { item: QueueItem }) {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {item.queuePosition && (
-              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-bold" title="FIFO Queue Position">
-                #{item.queuePosition}
-              </span>
-            )}
             <span className="font-semibold text-gray-800">{item.reportName}</span>
             <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
               {item.numTransactions} rows
@@ -129,14 +132,15 @@ function QueueItemRow({ item }: { item: QueueItem }) {
             </div>
           ) : null}
 
-          <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-            <span title="Time for server to acknowledge request">
-              Response: <span className="font-medium text-blue-600">{item.ackTime}ms</span>
-            </span>
-            {item.completedAt && (
-              <span title="Total time from request to job completion">
-                Completed in: <span className="font-medium text-green-600">{((item.completedAt - item.addedAt) / 1000).toFixed(1)}s</span>
-              </span>
+          <div className="mt-2 text-xs text-gray-600">
+            {item.queuePosition && <span className="font-semibold text-purple-600">#{item.queuePosition}</span>}
+            {item.queuePosition && ' · '}
+            {item.status === 'queued' || item.status === 'processing' ? (
+              <span>Ack: {formatTime(item.ackTime)} — Processing, please wait...</span>
+            ) : item.completedAt ? (
+              <span>Ack: {formatTime(item.ackTime)} | Processed: {formatTime(item.completedAt - item.addedAt)}</span>
+            ) : (
+              <span>Ack: {formatTime(item.ackTime)}</span>
             )}
           </div>
 
